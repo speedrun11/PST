@@ -36,7 +36,7 @@ function sendVerificationEmail($email, $token) {
         $mail->isHTML(true);
         $mail->Subject = 'Email Verification for Your Account';
         
-        $verificationLink = "http://".$_SERVER['HTTP_HOST']."/RestaurantPOS/Restro/customer/verify_email.php?token=".$token;
+        $verificationLink = "http://".$_SERVER['HTTP_HOST']."/PST/Restro/customer/verify_email.php?token=".$token;
         $message = "
         <html>
         <head>

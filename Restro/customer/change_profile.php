@@ -85,6 +85,148 @@ if (isset($_POST['changePassword'])) {
 require_once('partials/_head.php');
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>PST - Change Profile</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-dark: #1a1a2e;
+            --primary-light: #f8f5f2;
+            --accent-gold: #c0a062;
+            --accent-red: #9e2b2b;
+            --accent-green: #4a6b57;
+            --accent-blue: #3a5673;
+            --text-light: #f8f5f2;
+            --text-dark: #1a1a2e;
+            --transition-speed: 0.4s;
+        }
+        
+        body {
+            background-color: var(--primary-dark);
+            color: var(--text-light);
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .header {
+            background: url(../admin/assets/img/theme/restro00.jpg) no-repeat center center;
+            background-size: cover;
+        }
+        
+        .mask {
+            background-color: rgba(26, 26, 46, 0.5) !important;
+        }
+        
+        .card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(192, 160, 98, 0.2);
+            border-radius: 10px;
+            backdrop-filter: blur(8px);
+            transition: all var(--transition-speed) ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(192, 160, 98, 0.4);
+        }
+        
+        .card-header {
+            background: rgba(26, 26, 46, 0.9) !important;
+            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
+        }
+        
+        .card-header h3 {
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        .form-control-alternative {
+            background-color: rgba(26, 26, 46, 0.7);
+            border: 1px solid rgba(192, 160, 98, 0.3);
+            color: var(--text-light);
+            transition: all var(--transition-speed) ease;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .form-control-alternative:focus {
+            background-color: rgba(26, 26, 46, 0.9);
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 2px rgba(192, 160, 98, 0.2);
+            color: var(--text-light);
+        }
+        
+        .form-control-label {
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, rgba(74, 107, 87, 0.9), rgba(74, 107, 87, 0.7));
+            border: 1px solid rgba(74, 107, 87, 0.5);
+            color: white;
+            transition: all var(--transition-speed) ease;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            filter: brightness(1.15);
+            border-color: rgba(74, 107, 87, 0.8);
+        }
+        
+        .text-white {
+            color: var(--text-light) !important;
+        }
+        
+        .text-gold {
+            color: var(--accent-gold) !important;
+        }
+        
+        .h3 {
+            color: var(--accent-gold) !important;
+            font-family: 'Fredoka', sans-serif;
+        }
+        
+        .h5 {
+            color: var(--text-light);
+        }
+        
+        hr {
+            border-top: 1px solid rgba(192, 160, 98, 0.3);
+        }
+        
+        .heading-small {
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-size: 0.85rem;
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                backdrop-filter: blur(4px);
+            }
+        }
+        
+        
+    </style>
+</head>
 <body>
     <!-- Sidenav -->
     <?php
@@ -104,9 +246,9 @@ require_once('partials/_head.php');
         while ($customer = $res->fetch_object()) {
         ?>
             <!-- Header -->
-            <div class="header pb-8 pt-5 pt-lg-8 d-flex align-items-center" style="min-height: 600px; background-image: url(../admin/assets/img/theme/restro00.jpg); background-size: cover; background-position: center top;">
+            <div class="header pb-8 pt-5 pt-lg-8 d-flex align-items-center" style="min-height: 600px; background-image: url(../admin/assets/img/theme/pastil.jpg); background-size: cover; background-position: center top;">
                 <!-- Mask -->
-                <span class="mask bg-gradient-default opacity-8"></span>
+                <span class="mask bg-gradient-dark opacity-8"></span>
                 <!-- Header container -->
                 <div class="container-fluid d-flex align-items-center">
                     <div class="row">
@@ -162,77 +304,75 @@ require_once('partials/_head.php');
                             </div>
                         </div>
                     </div>
-                    <div class="col-xl-8 order-xl-1">
-                        <div class="card bg-secondary shadow">
-                            <div class="card-header bg-white border-0">
-                                <div class="row align-items-center">
-                                    <div class="col-8">
-                                        <h3 class="mb-0">My account</h3>
-                                    </div>
-                                    <div class="col-4 text-right">
-                                    </div>
-                                </div>
+<div class="col-xl-8 order-xl-1">
+    <div class="card shadow">
+        <div class="card-header border-0">
+            <div class="row align-items-center">
+                <div class="col-8">
+                    <h3 class="mb-0 text-gold">My Account</h3>
+                </div>
+                <div class="col-4 text-right">
+                    <!-- Optional action button could go here -->
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <form method="post">
+                <h6 class="heading-small text-gold mb-4">User Information</h6>
+                <div class="pl-lg-4">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-username">Full Name</label>
+                                <input type="text" name="customer_name" value="<?php echo $customer->customer_name; ?>" id="input-username" class="form-control form-control-alternative">
                             </div>
-                            <div class="card-body">
-                                <form method="post">
-                                    <h6 class="heading-small text-muted mb-4">User information</h6>
-                                    <div class="pl-lg-4">
-                                        <div class="row">
-                                            <div class="col-lg-6">
-                                                <div class="form-group">
-                                                    <label class="form-control-label" for="input-username">Full Name</label>
-                                                    <input type="text" name="customer_name" value="<?php echo $customer->customer_name; ?>" id="input-username" class="form-control form-control-alternative" ">
-                                                </div>
-                                            </div>
-                                            <div class=" col-lg-6">
-                                                <div class="form-group">
-                                                    <label class="form-control-label" for="input-email">Phone Number</label>
-                                                    <input type="text" id="input-email" value="<?php echo $customer->customer_phoneno; ?>" name="customer_phone" class="form-control form-control-alternative">
-                                                </div>
-                                            </div>
-                                            <div class="col-lg-12">
-                                                <div class="form-group">
-                                                    <label class="form-control-label" for="input-email">Email address</label>
-                                                    <input type="email" id="input-email" value="<?php echo $customer->customer_email; ?>" name="customer_email" class="form-control form-control-alternative">
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-lg-12">
-                                            <div class="form-group">
-                                                <input type="submit" id="input-email" name="ChangeProfile" class="btn btn-success form-control-alternative" value="Submit"">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </form>
-                                <hr>
-                                <form method =" post">
-                                        <h6 class="heading-small text-muted mb-4">Change Password</h6>
-                                        <div class="pl-lg-4">
-                                            <div class="row">
-                                                <div class="col-lg-12">
-                                                    <div class="form-group">
-                                                        <label class="form-control-label" for="input-username">Old Password</label>
-                                                        <input type="password" name="old_password" id="input-username" class="form-control form-control-alternative">
-                                                    </div>
-                                                </div>
-
-                                                <div class="col-lg-12">
-                                                    <div class="form-group">
-                                                        <label class="form-control-label" for="input-email">New Password</label>
-                                                        <input type="password" name="new_password" class="form-control form-control-alternative">
-                                                    </div>
-                                                </div>
-
-                                                <div class="col-lg-12">
-                                                    <div class="form-group">
-                                                        <label class="form-control-label" for="input-email">Confirm New Password</label>
-                                                        <input type="password" name="confirm_password" class="form-control form-control-alternative">
-                                                    </div>
-                                                </div>
-
-                                                <div class="col-lg-12">
-                                                    <div class="form-group">
-                                                        <input type="submit" id="input-email" name="changePassword" class="btn btn-success form-control-alternative" value="Change Password">
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-phone">Phone Number</label>
+                                <input type="text" id="input-phone" value="<?php echo $customer->customer_phoneno; ?>" name="customer_phoneno" class="form-control form-control-alternative">
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-email">Email Address</label>
+                                <input type="email" id="input-email" value="<?php echo $customer->customer_email; ?>" name="customer_email" class="form-control form-control-alternative">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-12">
+                        <div class="form-group">
+                            <input type="submit" name="ChangeProfile" class="btn btn-success btn-block" value="Update Profile">
+                        </div>
+                    </div>
+                </div>
+            </form>
+            <hr class="my-4">
+            <form method="post">
+                <h6 class="heading-small text-gold mb-4">Change Password</h6>
+                <div class="pl-lg-4">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-old-password">Old Password</label>
+                                <input type="password" name="old_password" id="input-old-password" class="form-control form-control-alternative">
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-new-password">New Password</label>
+                                <input type="password" name="new_password" id="input-new-password" class="form-control form-control-alternative">
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="form-group">
+                                <label class="form-control-label text-gold" for="input-confirm-password">Confirm New Password</label>
+                                <input type="password" name="confirm_password" id="input-confirm-password" class="form-control form-control-alternative">
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="form-group">
+                                <input type="submit" name="changePassword" class="btn btn-success btn-block" value="Change Password">
                                                     </div>
                                                 </div>
                                             </div>

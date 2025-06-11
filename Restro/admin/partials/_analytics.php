@@ -1,4 +1,12 @@
 <?php
+// Include database connection - corrected path
+require_once __DIR__ . '/../config/config.php';
+
+// Verify connection is established
+if ($mysqli->connect_error) {
+    die("Connection failed: " . $mysqli->connect_error);
+}
+
 //1. Customers
 $query = "SELECT COUNT(*) FROM `rpos_customers` ";
 $stmt = $mysqli->prepare($query);
@@ -15,7 +23,7 @@ $stmt->bind_result($orders);
 $stmt->fetch();
 $stmt->close();
 
-//3. Orders
+//3. Products
 $query = "SELECT COUNT(*) FROM `rpos_products` ";
 $stmt = $mysqli->prepare($query);
 $stmt->execute();
@@ -23,10 +31,11 @@ $stmt->bind_result($products);
 $stmt->fetch();
 $stmt->close();
 
-//4.Sales
+//4. Sales
 $query = "SELECT SUM(pay_amt) FROM `rpos_payments` ";
 $stmt = $mysqli->prepare($query);
 $stmt->execute();
 $stmt->bind_result($sales);
 $stmt->fetch();
 $stmt->close();
+?>
