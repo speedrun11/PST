@@ -192,7 +192,6 @@ require_once('partials/_analytics.php');
                 overflow: hidden;
             }
             
-            /* Card header styling */
             .card-header {
                 background: rgba(26, 26, 46, 0.9);
                 border-bottom: 1px solid rgba(192, 160, 98, 0.3);
@@ -203,14 +202,12 @@ require_once('partials/_analytics.php');
                 font-family: 'Fredoka', sans-serif;
             }
             
-            /* Badge styling */
             .badge {
                 padding: 0.5em 0.75em;
                 font-weight: 600;
                 letter-spacing: 0.5px;
             }
             
-            /* Responsive adjustments */
             @media (max-width: 768px) {
                 .table thead th {
                     font-size: 0.75rem;
@@ -223,7 +220,7 @@ require_once('partials/_analytics.php');
                 }
             }
             .spacing-between-tables {
-                margin-top: 6.5rem; /* Adjust this value as needed */
+                margin-top: 6.5rem;
             }
             .text-gold {
                 color: var(--accent-gold) !important;

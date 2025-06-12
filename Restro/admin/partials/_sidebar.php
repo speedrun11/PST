@@ -125,12 +125,12 @@ while ($admin = $res->fetch_object()) {
         <ul class="navbar-nav mb-md-3">
           <li class="nav-item">
             <a class="nav-link text-light" href="orders_reports.php">
-              <i class="fas fa-shopping-basket text-gold"></i> Orders
+              <i class="fas fa-shopping-basket text-gold"></i> Orders Report
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link text-light" href="payments_reports.php">
-              <i class="fas fa-funnel-dollar text-gold"></i> Payments
+              <i class="fas fa-funnel-dollar text-gold"></i> Payments Report
             </a>
           </li>
         </ul>

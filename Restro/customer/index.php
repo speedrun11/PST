@@ -1,18 +1,16 @@
 <?php
 session_start();
 include('config/config.php');
-//login 
 if (isset($_POST['login'])) {
     $customer_email = $_POST['customer_email'];
-    $customer_password = sha1(md5($_POST['customer_password'])); //double encrypt to increase security
-    $stmt = $mysqli->prepare("SELECT customer_email, customer_password, customer_id  FROM  rpos_customers WHERE (customer_email =? AND customer_password =?)"); //sql to log in user
-    $stmt->bind_param('ss',  $customer_email, $customer_password); //bind fetched parameters
-    $stmt->execute(); //execute bind 
-    $stmt->bind_result($customer_email, $customer_password, $customer_id); //bind result
+    $customer_password = sha1(md5($_POST['customer_password']));
+    $stmt = $mysqli->prepare("SELECT customer_email, customer_password, customer_id  FROM  rpos_customers WHERE (customer_email =? AND customer_password =?)");
+    $stmt->bind_param('ss',  $customer_email, $customer_password);
+    $stmt->execute(); 
+    $stmt->bind_result($customer_email, $customer_password, $customer_id);
     $rs = $stmt->fetch();
     $_SESSION['customer_id'] = $customer_id;
     if ($rs) {
-        //if its sucessfull
         header("location:dashboard.php");
     } else {
         $err = "Incorrect Authentication Credentials ";

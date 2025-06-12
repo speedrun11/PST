@@ -6,7 +6,6 @@ include('config/code-generator.php');
 
 check_login();
 if (isset($_POST['ChangeProfile'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["customer_phoneno"]) || empty($_POST["customer_name"]) || empty($_POST['customer_email'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -15,13 +14,10 @@ if (isset($_POST['ChangeProfile'])) {
     $customer_email = $_POST['customer_email'];
     $customer_id = $_SESSION['customer_id'];
 
-    //Insert Captured information to a database table
     $postQuery = "UPDATE rpos_customers SET customer_name =?, customer_phoneno =?, customer_email =?, customer_password =? WHERE  customer_id =?";
     $postStmt = $mysqli->prepare($postQuery);
-    //bind paramaters
     $rc = $postStmt->bind_param('sssss', $customer_name, $customer_phoneno, $customer_email, $customer_password, $customer_id);
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Profile Updated" && header("refresh:1; url=dashboard.php");
     } else {
@@ -31,7 +27,6 @@ if (isset($_POST['ChangeProfile'])) {
 }
 if (isset($_POST['changePassword'])) {
 
-    //Change Password
     $error = 0;
     if (isset($_POST['old_password']) && !empty($_POST['old_password'])) {
         $old_password = mysqli_real_escape_string($mysqli, trim(sha1(md5($_POST['old_password']))));
@@ -65,14 +60,11 @@ if (isset($_POST['changePassword'])) {
             } else {
 
                 $new_password  = sha1(md5($_POST['new_password']));
-                //Insert Captured information to a database table
                 $query = "UPDATE rpos_customers SET  customer_password =? WHERE customer_id =?";
                 $stmt = $mysqli->prepare($query);
-                //bind paramaters
                 $rc = $stmt->bind_param('si', $new_password, $customer_id);
                 $stmt->execute();
 
-                //declare a varible which will be passed to alert function
                 if ($stmt) {
                     $success = "Password Changed" && header("refresh:1; url=dashboard.php");
                 } else {
@@ -238,7 +230,6 @@ require_once('partials/_head.php');
         <?php
         require_once('partials/_topnav.php');
         $customer_id = $_SESSION['customer_id'];
-        //$login_id = $_SESSION['login_id'];
         $ret = "SELECT * FROM  rpos_customers  WHERE customer_id = '$customer_id'";
         $stmt = $mysqli->prepare($ret);
         $stmt->execute();

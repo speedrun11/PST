@@ -68,7 +68,7 @@ require_once('partials/_head.php');
         }
         
         .header {
-            background: url(assets/img/theme/restro00.jpg) no-repeat center center;
+            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         
@@ -192,7 +192,7 @@ require_once('partials/_head.php');
     while ($staff = $res->fetch_object()) {
     ?>
       <!-- Header -->
-      <div style="background-image: url(assets/img/theme/restro00.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
+      <div style="background-image: url(assets/img/theme/pastil.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
       <span class="mask bg-gradient-dark opacity-8"></span>
         <div class="container-fluid">
           <div class="header-body">

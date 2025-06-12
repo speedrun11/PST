@@ -5,7 +5,6 @@ include('config/config.php');
 if (isset($_GET['token'])) {
     $token = $_GET['token'];
     
-    // Check if token exists in database
     $query = "SELECT * FROM rpos_customers WHERE verification_token = ?";
     $stmt = $mysqli->prepare($query);
     $stmt->bind_param('s', $token);
@@ -15,7 +14,6 @@ if (isset($_GET['token'])) {
     if ($result->num_rows > 0) {
         $customer = $result->fetch_assoc();
         
-        // Update the user's verification status
         $updateQuery = "UPDATE rpos_customers SET is_verified = 1, verification_token = NULL WHERE customer_id = ?";
         $updateStmt = $mysqli->prepare($updateQuery);
         $updateStmt->bind_param('s', $customer['customer_id']);

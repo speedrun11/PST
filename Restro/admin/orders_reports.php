@@ -6,89 +6,240 @@ check_login();
 require_once('partials/_head.php');
 ?>
 
-<body>
-    <!-- Sidenav --><!-- For more projects: Visit codeastro.com  -->
-    <?php
-    require_once('partials/_sidebar.php');
-    ?>
-    <!-- Main content -->
-    <div class="main-content">
-        <!-- Top navbar -->
-        <?php
-        require_once('partials/_topnav.php');
-        ?>
-        <!-- Header -->
-        <div style="background-image: url(assets/img/theme/restro00.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
-        <span class="mask bg-gradient-dark opacity-8"></span>
-            <div class="container-fluid">
-                <div class="header-body">
-                </div>
-            </div>
-        </div>
-        <!-- Page content -->
-        <div class="container-fluid mt--8">
-            <!-- Table -->
-            <div class="row">
-                <div class="col">
-                    <div class="card shadow">
-                        <div class="card-header border-0">
-                            Orders Records
-                        </div><!-- For more projects: Visit codeastro.com  -->
-                        <div class="table-responsive">
-                            <table class="table align-items-center table-flush">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th class="text-success" scope="col">Code</th>
-                                        <th scope="col">Customer</th>
-                                        <th class="text-success" scope="col">Product</th>
-                                        <th scope="col">Unit Price</th>
-                                        <th class="text-success" scope="col">#</th>
-                                        <th scope="col">Total Price</th>
-                                        <th scop="col">Status</th>
-                                        <th scope="col">Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php
-                                    $ret = "SELECT * FROM  rpos_orders ORDER BY `created_at` DESC  ";
-                                    $stmt = $mysqli->prepare($ret);
-                                    $stmt->execute();
-                                    $res = $stmt->get_result();
-                                    while ($order = $res->fetch_object()) {
-                                        $total = ($order->prod_price * $order->prod_qty);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
+    <title>PST - Orders Reports</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-dark: #1a1a2e;
+            --primary-light: #f8f5f2;
+            --accent-gold: #c0a062;
+            --accent-red: #9e2b2b;
+            --accent-green: #4a6b57;
+            --accent-blue: #3a5673;
+            --text-light: #f8f5f2;
+            --text-dark: #1a1a2e;
+            --transition-speed: 0.4s;
+        }
+        
+        body {
+            background-color: var(--primary-dark);
+            color: var(--text-light);
+            font-family: 'Poppins', sans-serif;
+        }
+        
+        .header {
+            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
+            background-size: cover;
+        }
+        
+        .mask {
+            background-color: rgba(26, 26, 46, 0.5) !important;
+        }
+        
+        .card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(192, 160, 98, 0.2);
+            border-radius: 10px;
+            backdrop-filter: blur(8px);
+            transition: all var(--transition-speed) ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(192, 160, 98, 0.4);
+        }
+        
+        .table {
+            color: var(--text-light);
+        }
+        
+        .table thead th {
+            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+        }
+        
+        .table tbody tr {
+            border-bottom: 1px solid rgba(192, 160, 98, 0.1);
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .table tbody tr:hover {
+            background: rgba(192, 160, 98, 0.1);
+        }
+        
+        .text-gold {
+            color: var(--accent-gold) !important;
+        }
+        
+        .text-success {
+            color: var(--accent-green) !important;
+        }
+        
+        .table thead {
+            background: rgba(26, 26, 46, 0.9);
+            border-bottom: 2px solid var(--accent-gold);
+        }
+        
+        .table thead th {
+            color: var(--accent-gold) !important;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            padding: 1rem;
+        }
+        
+        .table tbody {
+            background: rgba(26, 26, 46, 0.8);
+        }
+        
+        .table tbody td, .table tbody th {
+            padding: 1rem;
+            vertical-align: middle;
+            border-top: 1px solid rgba(192, 160, 98, 0.1);
+        }
+        
+        .table tbody tr:hover {
+            background: rgba(192, 160, 98, 0.1) !important;
+            transform: translateX(5px);
+        }
+        
+        .card-header {
+            background: rgba(26, 26, 46, 0.9);
+            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+        }
 
-                                    ?>
-                                        <tr>
-                                            <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
-                                            <td><?php echo $order->customer_name; ?></td>
-                                            <td class="text-success"><?php echo $order->prod_name; ?></td>
-                                            <td>$ <?php echo $order->prod_price; ?></td>
-                                            <td class="text-success"><?php echo $order->prod_qty; ?></td>
-                                            <td>$ <?php echo $total; ?></td>
-                                            <td><?php if ($order->order_status == '') {
-                                                    echo "<span class='badge badge-danger'>Not Paid</span>";
-                                                } else {
-                                                    echo "<span class='badge badge-success'>$order->order_status</span>";
-                                                } ?></td>
-                                            <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
-                                        </tr>
-                                    <?php } ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div><!-- For more projects: Visit codeastro.com  -->
-            <!-- Footer -->
-            <?php
-            require_once('partials/_footer.php');
-            ?>
-        </div>
-    </div>
-    <!-- Argon Scripts -->
+        .badge-danger {
+            background-color: var(--accent-red);
+            color: var(--text-light);
+        }
+        
+        .badge-success {
+            background-color: var(--accent-green);
+            color: var(--text-light);
+        }
+        
+        @media (max-width: 768px) {
+            .table thead th {
+                font-size: 0.75rem;
+                padding: 0.75rem;
+            }
+            
+            .table tbody td, .table tbody th {
+                padding: 0.75rem;
+                font-size: 0.85rem;
+            }
+        }
+            .card-header h3 {
+                color: var(--accent-gold);
+                font-family: 'Fredoka', sans-serif;
+        }
+    </style>
+</head>
+<body>
+  <!-- Sidenav -->
+  <?php
+  require_once('partials/_sidebar.php');
+  ?>
+  <!-- Main content -->
+  <div class="main-content">
+    <!-- Top navbar -->
     <?php
-    require_once('partials/_scripts.php');
+    require_once('partials/_topnav.php');
     ?>
+    <!-- Header -->
+    <div style="background-image: url(assets/img/theme/pastil.jpg); background-size: cover;" class="header pb-8 pt-5 pt-md-8">
+    <span class="mask bg-gradient-dark opacity-8"></span>
+      <div class="container-fluid">
+        <div class="header-body">
+        </div>
+      </div>
+    </div>
+    <!-- Page content -->
+    <div class="container-fluid mt--8">
+      <!-- Table -->
+      <div class="row">
+        <div class="col">
+          <div class="card shadow">
+            <div class="card-header border-0">
+              <div class="row align-items-center">
+                <div class="col">
+                  <h3 class="mb-0">Orders Records</h3>
+                </div>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table align-items-center table-flush">
+                <thead class="thead-dark">
+                  <tr>
+                    <th class="text-gold" scope="col">Code</th>
+                    <th scope="col">Customer</th>
+                    <th class="text-gold" scope="col">Product</th>
+                    <th scope="col">Unit Price</th>
+                    <th class="text-gold" scope="col">#</th>
+                    <th scope="col">Total Price</th>
+                    <th scop="col">Status</th>
+                    <th scope="col">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <?php
+                  $ret = "SELECT * FROM  rpos_orders ORDER BY `created_at` DESC  ";
+                  $stmt = $mysqli->prepare($ret);
+                  $stmt->execute();
+                  $res = $stmt->get_result();
+                  while ($order = $res->fetch_object()) {
+                      $total = ($order->prod_price * $order->prod_qty);
+
+                  ?>
+                    <tr>
+                      <th class="text-gold" scope="row"><?php echo $order->order_code; ?></th>
+                      <td><?php echo $order->customer_name; ?></td>
+                      <td class="text-gold"><?php echo $order->prod_name; ?></td>
+                      <td>₱ <?php echo $order->prod_price; ?></td>
+                      <td class="text-gold"><?php echo $order->prod_qty; ?></td>
+                      <td>₱ <?php echo $total; ?></td>
+                      <td><?php if ($order->order_status == '') {
+                              echo "<span class='badge badge-danger'>Not Paid</span>";
+                          } else {
+                              echo "<span class='badge badge-success'>$order->order_status</span>";
+                          } ?></td>
+                      <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
+                    </tr>
+                  <?php } ?>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Footer -->
+      <?php
+      require_once('partials/_footer.php');
+      ?>
+    </div>
+  </div>
+  <!-- Argon Scripts -->
+  <?php
+  require_once('partials/_scripts.php');
+  ?>
 </body>
-<!-- For more projects: Visit codeastro.com  -->
 </html>

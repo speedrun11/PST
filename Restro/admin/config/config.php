@@ -2,7 +2,7 @@
 $dbuser = "root";
 $dbpass = "";
 $host = "localhost";
-$db = "rposystem";
+$db = "pst";
 
 // Create connection
 $mysqli = new mysqli($host, $dbuser, $dbpass, $db);

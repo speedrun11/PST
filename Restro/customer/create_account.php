@@ -4,14 +4,11 @@ include('config/config.php');
 
 $cus_id = 'CUS' . uniqid() . mt_rand(1000, 9999);
 
-// Function to generate verification token
 function generateToken($length = 32) {
     return bin2hex(random_bytes($length));
 }
 
-// Function to send verification email
 function sendVerificationEmail($email, $token) {
-    // Load PHPMailer manually
     require 'phpmailer/src/PHPMailer.php';
     require 'phpmailer/src/SMTP.php';
     require 'phpmailer/src/Exception.php';
@@ -19,20 +16,17 @@ function sendVerificationEmail($email, $token) {
     $mail = new PHPMailer\PHPMailer\PHPMailer(true);
     
     try {
-        // Server settings
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com'; // Gmail SMTP server
+        $mail->Host       = 'smtp.gmail.com'; 
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'pastilsatabi.pagasa@gmail.com'; // Your Gmail address
-        $mail->Password   = 'flgn wwhd aawf szct'; // Your Gmail app password
+        $mail->Username   = 'pastilsatabi.pagasa@gmail.com';
+        $mail->Password   = 'flgn wwhd aawf szct';
         $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS;
         $mail->Port       = 465;
         
-        // Recipients
         $mail->setFrom('no-reply@yourdomain.com', 'Pastil sa Tabi');
         $mail->addAddress($email);
         
-        // Content
         $mail->isHTML(true);
         $mail->Subject = 'Email Verification for Your Account';
         
@@ -77,21 +71,18 @@ function sendVerificationEmail($email, $token) {
     }
 }
 
-//login 
 if (isset($_POST['addCustomer'])) {
-    //Prevent Posting Blank Values
     if (empty($_POST["customer_phoneno"]) || empty($_POST["customer_name"]) || empty($_POST['customer_email']) || empty($_POST['customer_password'])) {
         $err = "Blank Values Not Accepted";
     } else {
         $customer_name = $_POST['customer_name'];
         $customer_phoneno = $_POST['customer_phoneno'];
         $customer_email = $_POST['customer_email'];
-        $customer_password = sha1(md5($_POST['customer_password'])); //Hash This 
+        $customer_password = sha1(md5($_POST['customer_password']));
         $customer_id = $_POST['customer_id'];
         $verification_token = generateToken();
-        $is_verified = 0; // 0 means not verified
+        $is_verified = 0;
         
-        // Check if email already exists
         $checkQuery = "SELECT * FROM rpos_customers WHERE customer_email = ?";
         $checkStmt = $mysqli->prepare($checkQuery);
         $checkStmt->bind_param('s', $customer_email);
@@ -101,16 +92,12 @@ if (isset($_POST['addCustomer'])) {
         if ($result->num_rows > 0) {
             $err = "Email already exists. Please use a different email or login.";
         } else {
-            //Insert Captured information to a database table
             $postQuery = "INSERT INTO rpos_customers (customer_id, customer_name, customer_phoneno, customer_email, customer_password, verification_token, is_verified) VALUES(?,?,?,?,?,?,?)";
             $postStmt = $mysqli->prepare($postQuery);
-            //bind paramaters
             $rc = $postStmt->bind_param('ssssssi', $customer_id, $customer_name, $customer_phoneno, $customer_email, $customer_password, $verification_token, $is_verified);
             $postStmt->execute();
             
-            //declare a varible which will be passed to alert function
             if ($postStmt) {
-                // Send verification email
                 if (sendVerificationEmail($customer_email, $verification_token)) {
                     $success = "Account created successfully! Please check your email to verify your account. <br>You'll be redirected to login page shortly.";
                     header("refresh:5; url=index.php");

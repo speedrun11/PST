@@ -3,7 +3,6 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-//Cancel Order
 if (isset($_GET['cancel'])) {
     $id = $_GET['cancel'];
     $adn = "DELETE FROM  rpos_orders  WHERE  order_id = ?";
