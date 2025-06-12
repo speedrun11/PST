@@ -8,11 +8,9 @@ if (isset($_POST['login'])) {
     $email = trim($_POST['admin_email']);
     $password = trim($_POST['admin_password']);
     
-    // Validate inputs
     if (empty($email) || empty($password)) {
         $err = "Please enter both email and password";
     } else {
-        // Query database for admin user using your actual table name
         $stmt = $mysqli->prepare("SELECT * FROM rpos_admin WHERE admin_email = ?");
         if (!$stmt) {
             $err = "Database error: " . $mysqli->error;
@@ -26,14 +24,11 @@ if (isset($_POST['login'])) {
                 if ($result->num_rows === 1) {
                     $admin = $result->fetch_assoc();
                     
-                    // Verify password (assuming passwords are hashed)
                     if (password_verify($password, $admin['admin_password'])) {
-                        // Login successful - set session variables using your actual column names
                         $_SESSION['admin_id'] = $admin['admin_id'];
                         $_SESSION['admin_email'] = $admin['admin_email'];
                         $_SESSION['admin_name'] = $admin['admin_name'];
                         
-                        // Redirect to dashboard
                         header("Location: dashboard.php");
                         exit();
                     } else {

@@ -6,7 +6,6 @@ include('config/code-generator.php');
 
 check_login();
 if (isset($_POST['addProduct'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["prod_code"]) || empty($_POST["prod_name"]) || empty($_POST['prod_desc']) || empty($_POST['prod_price'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -18,13 +17,10 @@ if (isset($_POST['addProduct'])) {
     $prod_desc = $_POST['prod_desc'];
     $prod_price = $_POST['prod_price'];
 
-    //Insert Captured information to a database table
     $postQuery = "INSERT INTO rpos_products (prod_id, prod_code, prod_name, prod_img, prod_desc, prod_price ) VALUES(?,?,?,?,?,?)";
     $postStmt = $mysqli->prepare($postQuery);
-    //bind paramaters
     $rc = $postStmt->bind_param('ssssss', $prod_id, $prod_code, $prod_name, $prod_img, $prod_desc, $prod_price);
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Product Added" && header("refresh:1; url=add_product.php");
     } else {

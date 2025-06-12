@@ -9,8 +9,6 @@ if (isset($_POST['reset_pwd'])) {
   }
   $checkEmail = mysqli_query($mysqli, "SELECT `admin_email` FROM `rpos_admin` WHERE `admin_email` = '" . $_POST['reset_email'] . "'") or exit(mysqli_error($mysqli));
   if (mysqli_num_rows($checkEmail) > 0) {
-    //exit('This email is already being used');
-    //Reset Password
     $reset_code = $_POST['reset_code'];
     $reset_token = sha1(md5($_POST['reset_token']));
     $reset_status = $_POST['reset_status'];
@@ -21,7 +19,6 @@ if (isset($_POST['reset_pwd'])) {
     $reset->execute();
     if ($reset) {
       $success = "Password Reset Instructions Sent To Your Email";
-      // && header("refresh:1; url=index.php");
     } else {
       $err = "Please Try Again Or Try Later";
     }

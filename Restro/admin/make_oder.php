@@ -6,7 +6,6 @@ include('config/code-generator.php');
 
 check_login();
 if (isset($_POST['make'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["order_code"]) || empty($_POST["customer_name"]) || empty($_GET['prod_price'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -19,13 +18,10 @@ if (isset($_POST['make'])) {
     $prod_price = $_GET['prod_price'];
     $prod_qty = $_POST['prod_qty'];
 
-    //Insert Captured information to a database table
     $postQuery = "INSERT INTO rpos_orders (prod_qty, order_id, order_code, customer_id, customer_name, prod_id, prod_name, prod_price) VALUES(?,?,?,?,?,?,?,?)";
     $postStmt = $mysqli->prepare($postQuery);
-    //bind paramaters
     $rc = $postStmt->bind_param('ssssssss', $prod_qty, $order_id, $order_code, $customer_id, $customer_name, $prod_id, $prod_name, $prod_price);
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Order Submitted" && header("refresh:1; url=payments.php");
     } else {
@@ -214,7 +210,6 @@ require_once('partials/_head.php');
                     <select class="form-control" name="customer_name" id="custName" onChange="getCustomer(this.value)">
                       <option value="">Select Customer Name</option>
                       <?php
-                      //Load All Customers
                       $ret = "SELECT * FROM  rpos_customers ";
                       $stmt = $mysqli->prepare($ret);
                       $stmt->execute();

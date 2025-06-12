@@ -5,9 +5,7 @@ include('config/checklogin.php');
 include('config/code-generator.php');
 
 check_login();
-//Update Product
 if (isset($_POST['updateProduct'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["prod_code"]) || empty($_POST["prod_name"]) || empty($_POST['prod_desc']) || empty($_POST['prod_price'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -18,7 +16,6 @@ if (isset($_POST['updateProduct'])) {
     $prod_price = $_POST['prod_price'];
     $update = $_GET['update'];
 
-    // Handle image upload if a new image is provided
     if (!empty($_FILES['prod_img']['name'])) {
       $prod_img = $_FILES['prod_img']['name'];
       move_uploaded_file($_FILES["prod_img"]["tmp_name"], "assets/img/products/" . $_FILES["prod_img"]["name"]);
@@ -32,7 +29,6 @@ if (isset($_POST['updateProduct'])) {
     }
 
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Product Updated" && header("refresh:1; url=products.php");
     } else {
@@ -77,7 +73,7 @@ require_once('partials/_head.php');
         }
         
         .header {
-            background: url(assets/img/theme/restro00.jpg) no-repeat center center;
+            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         
@@ -266,7 +262,7 @@ require_once('partials/_head.php');
     while ($prod = $res->fetch_object()) {
     ?>
       <!-- Header -->
-      <div style="background-image: url(assets/img/theme/restro00.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
+      <div style="background-image: url(assets/img/theme/pastil.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
       <span class="mask bg-gradient-dark opacity-8"></span>
         <div class="container-fluid">
           <div class="header-body">

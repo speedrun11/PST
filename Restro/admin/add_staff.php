@@ -5,9 +5,7 @@ include('config/checklogin.php');
 include('config/code-generator.php');
 
 check_login();
-//Add Staff
 if (isset($_POST['addStaff'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["staff_number"]) || empty($_POST["staff_name"]) || empty($_POST['staff_email']) || empty($_POST['staff_password'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -16,13 +14,10 @@ if (isset($_POST['addStaff'])) {
     $staff_email = $_POST['staff_email'];
     $staff_password = sha1(md5($_POST['staff_password']));
 
-    //Insert Captured information to a database table
     $postQuery = "INSERT INTO rpos_staff (staff_number, staff_name, staff_email, staff_password) VALUES(?,?,?,?)";
     $postStmt = $mysqli->prepare($postQuery);
-    //bind paramaters
     $rc = $postStmt->bind_param('ssss', $staff_number, $staff_name, $staff_email, $staff_password);
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Staff Added" && header("refresh:1; url=hrm.php");
     } else {

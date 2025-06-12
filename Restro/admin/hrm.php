@@ -3,7 +3,6 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-//Delete Staff
 if (isset($_GET['delete'])) {
   $id = intval($_GET['delete']);
   $adn = "DELETE FROM rpos_staff WHERE staff_id = ?";

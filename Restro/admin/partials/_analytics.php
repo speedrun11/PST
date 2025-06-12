@@ -1,8 +1,6 @@
 <?php
-// Include database connection - corrected path
 require_once __DIR__ . '/../config/config.php';
 
-// Verify connection is established
 if ($mysqli->connect_error) {
     die("Connection failed: " . $mysqli->connect_error);
 }

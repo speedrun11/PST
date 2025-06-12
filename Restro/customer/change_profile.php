@@ -111,7 +111,7 @@ require_once('partials/_head.php');
         }
         
         .header {
-            background: url(../admin/assets/img/theme/restro00.jpg) no-repeat center center;
+            background: url(../admin/assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         

@@ -3,7 +3,6 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-//Cancel Order
 if (isset($_GET['cancel'])) {
     $id = $_GET['cancel'];
     $adn = "DELETE FROM  rpos_orders  WHERE  order_id = ?";
@@ -54,7 +53,7 @@ require_once('partials/_head.php');
         }
         
         .header {
-            background: url(assets/img/theme/restro00.jpg) no-repeat center center;
+            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         
@@ -206,7 +205,7 @@ require_once('partials/_head.php');
         require_once('partials/_topnav.php');
         ?>
         <!-- Header -->
-        <div style="background-image: url(assets/img/theme/restro00.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
+        <div style="background-image: url(../admin/assets/img/theme/pastil.jpg); background-size: cover;" class="header  pb-8 pt-5 pt-md-8">
         <span class="mask bg-gradient-dark opacity-8"></span>
             <div class="container-fluid">
                 <div class="header-body">
@@ -258,7 +257,7 @@ require_once('partials/_head.php');
                                             <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
                                             <td><?php echo $order->customer_name; ?></td>
                                             <td><?php echo $order->prod_name; ?></td>
-                                            <td>$ <?php echo $total; ?></td>
+                                            <td>₱ <?php echo $total; ?></td>
                                             <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
                                             <td>
                                                 <div class="d-flex">

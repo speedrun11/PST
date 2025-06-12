@@ -1,9 +1,8 @@
 <?php
 include('config/config.php');
-//Get The price per purhcased quantity
 $ret = "SELECT * FROM  LAMCorp_waterTariffs";
 $stmt = $mysqli->prepare($ret);
-$stmt->execute(); //ok
+$stmt->execute();
 $res = $stmt->get_result();
 $cnt = 1;
 while ($row = $res->fetch_object()) {

@@ -62,7 +62,6 @@
                 url: "customer_ajax.php",
                 data: 'custName=' + val,
                 success: function(data) {
-                    //alert(data);
                     $('#customerID').val(data);
                 }
             });

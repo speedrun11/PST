@@ -5,9 +5,7 @@ include('config/checklogin.php');
 include('config/code-generator.php');
 
 check_login();
-//Update Product
 if (isset($_POST['updateProduct'])) {
-  //Prevent Posting Blank Values
   if (empty($_POST["prod_code"]) || empty($_POST["prod_name"]) || empty($_POST['prod_desc']) || empty($_POST['prod_price'])) {
     $err = "Blank Values Not Accepted";
   } else {
@@ -18,7 +16,6 @@ if (isset($_POST['updateProduct'])) {
     $prod_price = $_POST['prod_price'];
     $update = $_GET['update'];
 
-    // Handle image upload if a new image is provided
     if (!empty($_FILES['prod_img']['name'])) {
       $prod_img = $_FILES['prod_img']['name'];
       move_uploaded_file($_FILES["prod_img"]["tmp_name"], "assets/img/products/" . $_FILES["prod_img"]["name"]);
@@ -32,7 +29,6 @@ if (isset($_POST['updateProduct'])) {
     }
 
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
       $success = "Product Updated" && header("refresh:1; url=products.php");
     } else {

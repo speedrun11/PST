@@ -3,7 +3,6 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-//Delete Customer
 if (isset($_GET['delete'])) {
   $id = $_GET['delete'];
   $adn = "DELETE FROM rpos_customers WHERE customer_id = ?";

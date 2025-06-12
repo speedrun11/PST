@@ -3,17 +3,14 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-//Update Profile
 if (isset($_POST['ChangeProfile'])) {
     $staff_id = $_SESSION['staff_id'];
     $staff_name = $_POST['staff_name'];
     $staff_email = $_POST['staff_email'];
     $Qry = "UPDATE rpos_staff SET staff_name =?, staff_email =? WHERE staff_id =?";
     $postStmt = $mysqli->prepare($Qry);
-    //bind paramaters
     $rc = $postStmt->bind_param('ssi', $staff_name, $staff_email, $staff_id);
     $postStmt->execute();
-    //declare a varible which will be passed to alert function
     if ($postStmt) {
         $success = "Account Updated" && header("refresh:1; url=dashboard.php");
     } else {
@@ -22,7 +19,6 @@ if (isset($_POST['ChangeProfile'])) {
 }
 if (isset($_POST['changePassword'])) {
 
-    //Change Password
     $error = 0;
     if (isset($_POST['old_password']) && !empty($_POST['old_password'])) {
         $old_password = mysqli_real_escape_string($mysqli, trim(sha1(md5($_POST['old_password']))));
@@ -56,14 +52,11 @@ if (isset($_POST['changePassword'])) {
             } else {
 
                 $new_password  = sha1(md5($_POST['new_password']));
-                //Insert Captured information to a database table
                 $query = "UPDATE rpos_staff SET  staff_password =? WHERE staff_id =?";
                 $stmt = $mysqli->prepare($query);
-                //bind paramaters
                 $rc = $stmt->bind_param('si', $new_password, $staff_id);
                 $stmt->execute();
 
-                //declare a varible which will be passed to alert function
                 if ($stmt) {
                     $success = "Password Changed" && header("refresh:1; url=dashboard.php");
                 } else {
@@ -87,7 +80,6 @@ require_once('partials/_head.php');
         <?php
         require_once('partials/_topnav.php');
         $staff_id = $_SESSION['staff_id'];
-        //$login_id = $_SESSION['login_id'];
         $ret = "SELECT * FROM  rpos_staff  WHERE staff_id = '$staff_id'";
         $stmt = $mysqli->prepare($ret);
         $stmt->execute();
