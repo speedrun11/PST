@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 11, 2025 at 07:20 PM
+-- Generation Time: Jun 12, 2025 at 10:10 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.0.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `rposystem`
+-- Database: `pst`
 --
 
 -- --------------------------------------------------------
@@ -84,6 +84,15 @@ CREATE TABLE `rpos_orders` (
   `created_at` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `rpos_orders`
+--
+
+INSERT INTO `rpos_orders` (`order_id`, `order_code`, `customer_id`, `customer_name`, `prod_id`, `prod_name`, `prod_price`, `prod_qty`, `order_status`, `created_at`) VALUES
+('4ad66e196a', 'PXNJ-4081', 'CUS6849a6c26354d6082', 'Jeffersson Divina', 'c915e331cd', 'B1 - Beef Pastil', '36', '2', 'Paid', '2025-06-12 05:56:54.701534'),
+('529bb823c5', 'XZWT-4589', 'CUS6849a6c26354d6082', 'Jeffersson Divina', 'e98d3a7921', 'C1 - Chicken Pastil', '21', '1', 'Paid', '2025-06-12 04:18:47.287345'),
+('f01139322e', 'VWXY-3516', 'CUS6849a6c26354d6082', 'Jeffersson Divina', 'e98d3a7921', 'C1 - Regular Chicken', '21', '3', '', '2025-06-12 06:53:52.212761');
+
 -- --------------------------------------------------------
 
 --
@@ -115,6 +124,14 @@ CREATE TABLE `rpos_payments` (
   `created_at` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `rpos_payments`
+--
+
+INSERT INTO `rpos_payments` (`pay_id`, `pay_code`, `order_code`, `customer_id`, `pay_amt`, `pay_method`, `created_at`) VALUES
+('770bd3', '4THGL9MVFS', 'PXNJ-4081', 'CUS6849a6c26354d6082', '72', 'Cash', '2025-06-12 05:56:54.701228'),
+('c4b279', '2OAMUXVGC9', 'XZWT-4589', 'CUS6849a6c26354d6082', '21', 'Cash', '2025-06-12 04:18:47.287066');
+
 -- --------------------------------------------------------
 
 --
@@ -131,6 +148,14 @@ CREATE TABLE `rpos_products` (
   `created_at` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
+--
+-- Dumping data for table `rpos_products`
+--
+
+INSERT INTO `rpos_products` (`prod_id`, `prod_code`, `prod_name`, `prod_img`, `prod_desc`, `prod_price`, `created_at`) VALUES
+('c915e331cd', 'PJMC-6850', 'B1 - Regular Beef', 'B1.jpg', 'A Filipino dish made with steamed rice wrapped in banana leaves with dry shredded beef.', '36', '2025-06-12 05:29:05.799116'),
+('e98d3a7921', 'RLBP-7254', 'C1 - Regular Chicken', 'C1.jpg', 'A Filipino dish made with steamed rice wrapped in banana leaves with dry shredded chicken.', '21', '2025-06-12 05:29:21.427038');
+
 -- --------------------------------------------------------
 
 --
@@ -145,6 +170,13 @@ CREATE TABLE `rpos_staff` (
   `staff_password` varchar(200) NOT NULL,
   `created_at` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `rpos_staff`
+--
+
+INSERT INTO `rpos_staff` (`staff_id`, `staff_name`, `staff_number`, `staff_email`, `staff_password`, `created_at`) VALUES
+(3, 'Gabriel Cabututan', 'DSXO-0841', 'gabrielcabututan@gmail.com', 'adcd7048512e64b48da55b027577886ee5a36350', '2025-06-12 05:11:27.067639');
 
 --
 -- Indexes for dumped tables
@@ -209,7 +241,7 @@ ALTER TABLE `rpos_pass_resets`
 -- AUTO_INCREMENT for table `rpos_staff`
 --
 ALTER TABLE `rpos_staff`
-  MODIFY `staff_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `staff_id` int(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- Constraints for dumped tables
