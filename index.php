@@ -297,16 +297,16 @@
             </p>
 
             <div class="links">
-                <a href="Restro/admin/" class="animate-fade-in delay-3">
+                <a href="PSTsystem/admin/" class="animate-fade-in delay-3">
                     <i class="fas fa-user-shield logo-icon"></i> Admin Portal
                 </a>
-                <a href="Restro/cashier/" class="animate-fade-in delay-3">
+                <a href="PSTsystem/cashier/" class="animate-fade-in delay-3">
                     <i class="fas fa-cash-register logo-icon"></i> Cashier Login
                 </a>
-                <a href="Restro/inventory" class="animate-fade-in delay-4">
+                <a href="PSTsystem/inventory" class="animate-fade-in delay-4">
                     <i class="fas fa-boxes logo-icon"></i> Inventory Staff
                 </a>
-                <a href="Restro/customer" class="animate-fade-in delay-4">
+                <a href="PSTsystem/customer" class="animate-fade-in delay-4">
                     <i class="fas fa-utensils logo-icon"></i> Customer Order
                 </a>
             </div>

@@ -234,6 +234,23 @@ require_once('partials/_head.php');
                 width: 100%;
             }
         }
+                .text-gold {
+            color: var(--accent-gold) !important;
+        }
+
+        .sidebar .nav-link:hover {
+            color: var(--accent-gold) !important;
+            background: rgba(192, 160, 98, 0.1);
+        }
+
+        .sidebar .dropdown-menu {
+            background-color: rgba(26, 26, 46, 0.95);
+            border: 1px solid rgba(192, 160, 98, 0.2);
+        }
+
+        .sidebar .dropdown-item:hover {
+            background-color: rgba(192, 160, 98, 0.1);
+        }
     </style>
 </head>
 <body>
