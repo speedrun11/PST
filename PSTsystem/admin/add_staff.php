@@ -6,24 +6,25 @@ include('config/code-generator.php');
 
 check_login();
 if (isset($_POST['addStaff'])) {
-  if (empty($_POST["staff_number"]) || empty($_POST["staff_name"]) || empty($_POST['staff_email']) || empty($_POST['staff_password'])) {
-    $err = "Blank Values Not Accepted";
-  } else {
-    $staff_number = $_POST['staff_number'];
-    $staff_name = $_POST['staff_name'];
-    $staff_email = $_POST['staff_email'];
-    $staff_password = sha1(md5($_POST['staff_password']));
-
-    $postQuery = "INSERT INTO rpos_staff (staff_number, staff_name, staff_email, staff_password) VALUES(?,?,?,?)";
-    $postStmt = $mysqli->prepare($postQuery);
-    $rc = $postStmt->bind_param('ssss', $staff_number, $staff_name, $staff_email, $staff_password);
-    $postStmt->execute();
-    if ($postStmt) {
-      $success = "Staff Added" && header("refresh:1; url=hrm.php");
+    if (empty($_POST["staff_number"]) || empty($_POST["staff_name"]) || empty($_POST['staff_email']) || empty($_POST['staff_password'])) {
+        $err = "Blank Values Not Accepted";
     } else {
-      $err = "Please Try Again Or Try Later";
+        $staff_number = $_POST['staff_number'];
+        $staff_name = $_POST['staff_name'];
+        $staff_email = $_POST['staff_email'];
+        $staff_password = sha1(md5($_POST['staff_password']));
+        $staff_role = isset($_POST['staff_role']) ? implode(',', $_POST['staff_role']) : '';
+
+        $postQuery = "INSERT INTO rpos_staff (staff_number, staff_name, staff_email, staff_password, staff_role) VALUES(?,?,?,?,?)";
+        $postStmt = $mysqli->prepare($postQuery);
+        $rc = $postStmt->bind_param('sssss', $staff_number, $staff_name, $staff_email, $staff_password, $staff_role);
+        $postStmt->execute();
+        if ($postStmt) {
+            $success = "Staff Added" && header("refresh:1; url=hrm.php");
+        } else {
+            $err = "Please Try Again Or Try Later";
+        }
     }
-  }
 }
 require_once('partials/_head.php');
 ?>
@@ -165,6 +166,33 @@ require_once('partials/_head.php');
         .sidebar .dropdown-item:hover {
             background-color: rgba(192, 160, 98, 0.1);
         }
+        select[multiple] {
+    min-height: 100px;
+}
+
+select[multiple] option {
+    padding: 0.5rem;
+    margin: 2px 0;
+    background: rgba(26, 26, 46, 0.9);
+    color: var(--text-light);
+    border-radius: 3px;
+}
+
+select[multiple] option:hover {
+    background: rgba(192, 160, 98, 0.3);
+    cursor: pointer;
+}
+
+select[multiple] option:checked {
+    background: var(--accent-gold);
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+.text-muted {
+    color: rgba(192, 160, 98, 0.7) !important;
+    font-size: 0.75rem;
+}
     </style>
 </head>
 <body>
@@ -218,6 +246,18 @@ require_once('partials/_head.php');
                     <input type="password" name="staff_password" class="form-control" value="">
                   </div>
                 </div>
+                <hr>
+                <div class="form-row">
+                    <div class="col-md-6">
+                        <label>Staff Role</label>
+                        <select name="staff_role[]" class="form-control" multiple>
+                            <option value="cashier">Cashier</option>
+                            <option value="inventory">Inventory</option>
+                        </select>
+                        <small class="text-muted">Hold Ctrl/Cmd to select multiple roles</small>
+                    </div>
+                </div>
+                <br>
                 <br>
                 <div class="form-row">
                   <div class="col-md-6">

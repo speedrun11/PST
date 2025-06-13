@@ -365,7 +365,7 @@ if (isset($_POST['login'])) {
     <div class="flex-center position-ref full-height">
         <div class="login-container animate-fade-in">
             <div class="logo-container delay-1">
-                <img src="img/pst-logo.png" alt="Restaurant POS Logo" class="logo">
+                <img src="img/pst-logo.png" alt="PST Logo" class="logo">
             </div>
             
             <h1 class="title animate-fade-in delay-1">

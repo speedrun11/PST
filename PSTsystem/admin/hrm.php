@@ -183,6 +183,57 @@ require_once('partials/_head.php');
                 font-size: 0.75rem;
             }
         }
+                .badge-role {
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+            font-weight: 600;
+            border-radius: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-cashier {
+            background: linear-gradient(135deg, rgba(158, 43, 43, 0.8), rgba(120, 30, 30, 0.6));
+            color: white;
+        }
+        .badge-inventory {
+            background: linear-gradient(135deg, rgba(74, 107, 87, 0.8), rgba(58, 86, 115, 0.6));
+            color: white;
+        }
+        .badge-both {
+            background: linear-gradient(135deg, rgba(192, 160, 98, 0.8), rgba(158, 43, 43, 0.6));
+            color: white;
+        }
+            .form-control {
+        background-color: rgba(26, 26, 46, 0.8) !important;
+        border: 1px solid rgba(192, 160, 98, 0.3) !important;
+        color: var(--text-light) !important;
+        border-radius: 5px;
+        transition: all var(--transition-speed) ease;
+    }
+
+    .form-control:focus {
+        background-color: rgba(26, 26, 46, 0.9) !important;
+        border-color: var(--accent-gold) !important;
+        box-shadow: 0 0 0 0.2rem rgba(192, 160, 98, 0.25) !important;
+        color: var(--text-light) !important;
+    }
+
+    .form-control-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    select.form-control option {
+        background-color: var(--primary-dark);
+        color: var(--text-light);
+    }
+
+    .form-control-sm {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='%23c0a062' fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.5rem center !important;
+        background-size: 16px 12px !important;
+    }
     </style>
 </head>
 <body>
@@ -220,6 +271,21 @@ require_once('partials/_head.php');
                   </a>
                 </div>
               </div>
+              <!-- Role filter dropdown -->
+              <div class="row mt-3">
+                <div class="col-md-3">
+                  <form method="get" action="">
+                    <div class="form-group mb-0">
+                      <select class="form-control form-control-sm" name="role_filter" onchange="this.form.submit()">
+                          <option value="">All Roles</option>
+                          <option value="cashier" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] == 'cashier' ? 'selected' : ''); ?>>Cashiers</option>
+                          <option value="inventory" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] == 'inventory' ? 'selected' : ''); ?>>Inventory Staff</option>
+                          <option value="both" <?php echo (isset($_GET['role_filter']) && $_GET['role_filter'] == 'both' ? 'selected' : ''); ?>>Both Roles</option>
+                      </select>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
             
             <div class="table-responsive">
@@ -229,21 +295,54 @@ require_once('partials/_head.php');
                     <th class="text-gold" scope="col">Staff Number</th>
                     <th scope="col">Name</th>
                     <th class="text-gold" scope="col">Email</th>
+                    <th scope="col">Role</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <?php
+                  // Build the query based on role filter
                   $ret = "SELECT * FROM rpos_staff";
+                  if (isset($_GET['role_filter'])) {
+                    $filter = $_GET['role_filter'];
+                    if ($filter == 'cashier') {
+                      $ret .= " WHERE FIND_IN_SET('cashier', staff_role) > 0";
+                    } elseif ($filter == 'inventory') {
+                      $ret .= " WHERE FIND_IN_SET('inventory', staff_role) > 0";
+                    } elseif ($filter == 'both') {
+                      $ret .= " WHERE FIND_IN_SET('cashier', staff_role) > 0 AND FIND_IN_SET('inventory', staff_role) > 0";
+                    }
+                  }
+                  
                   $stmt = $mysqli->prepare($ret);
                   $stmt->execute();
                   $res = $stmt->get_result();
                   while ($staff = $res->fetch_object()) {
+                    // Determine role badge class
+                    $roles = explode(',', $staff->staff_role);
+                    $badge_class = '';
+                    $role_text = '';
+                    
+                    if (in_array('cashier', $roles) && in_array('inventory', $roles)) {
+                      $badge_class = 'badge-both';
+                      $role_text = 'Both Roles';
+                    } elseif (in_array('cashier', $roles)) {
+                      $badge_class = 'badge-cashier';
+                      $role_text = 'Cashier';
+                    } elseif (in_array('inventory', $roles)) {
+                      $badge_class = 'badge-inventory';
+                      $role_text = 'Inventory';
+                    }
                   ?>
                     <tr>
                       <td class="text-gold"><?php echo $staff->staff_number; ?></td>
                       <td><?php echo $staff->staff_name; ?></td>
                       <td class="text-gold"><?php echo $staff->staff_email; ?></td>
+                      <td>
+                        <span class="badge-role <?php echo $badge_class; ?>">
+                          <?php echo $role_text; ?>
+                        </span>
+                      </td>
                       <td>
                         <div class="d-flex">
                           <a href="hrm.php?delete=<?php echo $staff->staff_id; ?>" class="btn btn-sm btn-danger mr-2">

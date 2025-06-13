@@ -6,25 +6,26 @@ include('config/code-generator.php');
 
 check_login();
 if (isset($_POST['UpdateStaff'])) {
-  if (empty($_POST["staff_number"]) || empty($_POST["staff_name"]) || empty($_POST['staff_email']) || empty($_POST['staff_password'])) {
-    $err = "Blank Values Not Accepted";
-  } else {
-    $staff_number = $_POST['staff_number'];
-    $staff_name = $_POST['staff_name'];
-    $staff_email = $_POST['staff_email'];
-    $staff_password = $_POST['staff_password'];
-    $update = $_GET['update'];
-
-    $postQuery = "UPDATE rpos_staff SET  staff_number =?, staff_name =?, staff_email =?, staff_password =? WHERE staff_id =?";
-    $postStmt = $mysqli->prepare($postQuery);
-    $rc = $postStmt->bind_param('ssssi', $staff_number, $staff_name, $staff_email, $staff_password, $update);
-    $postStmt->execute();
-    if ($postStmt) {
-      $success = "Staff Updated" && header("refresh:1; url=hrm.php");
+    if (empty($_POST["staff_number"]) || empty($_POST["staff_name"]) || empty($_POST['staff_email']) || empty($_POST['staff_password'])) {
+        $err = "Blank Values Not Accepted";
     } else {
-      $err = "Please Try Again Or Try Later";
+        $staff_number = $_POST['staff_number'];
+        $staff_name = $_POST['staff_name'];
+        $staff_email = $_POST['staff_email'];
+        $staff_password = $_POST['staff_password'];
+        $staff_role = isset($_POST['staff_role']) ? implode(',', $_POST['staff_role']) : '';
+        $update = $_GET['update'];
+
+        $postQuery = "UPDATE rpos_staff SET staff_number =?, staff_name =?, staff_email =?, staff_password =?, staff_role =? WHERE staff_id =?";
+        $postStmt = $mysqli->prepare($postQuery);
+        $rc = $postStmt->bind_param('sssssi', $staff_number, $staff_name, $staff_email, $staff_password, $staff_role, $update);
+        $postStmt->execute();
+        if ($postStmt) {
+            $success = "Staff Updated" && header("refresh:1; url=hrm.php");
+        } else {
+            $err = "Please Try Again Or Try Later";
+        }
     }
-  }
 }
 require_once('partials/_head.php');
 ?>
@@ -226,6 +227,18 @@ require_once('partials/_head.php');
                       <input type="password" name="staff_password" class="form-control" value="">
                     </div>
                   </div>
+<hr>
+<div class="form-row">
+    <div class="col-md-6">
+        <label>Staff Role</label>
+        <select name="staff_role[]" class="form-control" multiple>
+            <option value="cashier" <?php echo (strpos($staff->staff_role, 'cashier') !== false) ? 'selected' : ''; ?>>Cashier</option>
+            <option value="inventory" <?php echo (strpos($staff->staff_role, 'inventory') !== false) ? 'selected' : ''; ?>>Inventory</option>
+        </select>
+        <small class="text-muted">Hold Ctrl/Cmd to select multiple roles</small>
+    </div>
+</div>
+<br>
                   <br>
                   <div class="form-row">
                     <div class="col-md-6">
