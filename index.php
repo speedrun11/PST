@@ -307,7 +307,7 @@
                     <i class="fas fa-boxes logo-icon"></i> Inventory Staff
                 </a>
                 <a href="PSTsystem/customer" class="animate-fade-in delay-4">
-                    <i class="fas fa-utensils logo-icon"></i> Customer Order
+                    <i class="fas fa-utensils logo-icon"></i> Customer Feedback
                 </a>
             </div>
         </div>

@@ -1,28 +1,43 @@
 <?php
-session_start();
+// Add at the top of index.php before the HTML
 include('config/config.php');
-if (isset($_POST['login'])) {
-    $customer_email = $_POST['customer_email'];
-    $customer_password = sha1(md5($_POST['customer_password']));
-    $stmt = $mysqli->prepare("SELECT customer_email, customer_password, customer_id  FROM  rpos_customers WHERE (customer_email =? AND customer_password =?)");
-    $stmt->bind_param('ss',  $customer_email, $customer_password);
-    $stmt->execute(); 
-    $stmt->bind_result($customer_email, $customer_password, $customer_id);
-    $rs = $stmt->fetch();
-    $_SESSION['customer_id'] = $customer_id;
-    if ($rs) {
-        header("location:dashboard.php");
+
+$success = false;
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $rating = intval($_POST['rating']);
+    $feedback = trim($_POST['feedback']);
+    $email = !empty($_POST['email']) ? trim($_POST['email']) : null;
+
+    // Validate input
+    if ($rating < 1 || $rating > 5) {
+        $error = "Please select a valid rating";
+    } elseif (empty($feedback)) {
+        $error = "Please provide your feedback";
     } else {
-        $err = "Incorrect Authentication Credentials ";
+        // Insert feedback into database
+        $query = "INSERT INTO rpos_feedback (rating, feedback_text, email) VALUES (?, ?, ?)";
+        $stmt = $mysqli->prepare($query);
+        $stmt->bind_param('iss', $rating, $feedback, $email);
+        $stmt->execute();
+        
+        if ($stmt->affected_rows > 0) {
+            $success = true;
+        } else {
+            $error = "Failed to submit feedback. Please try again.";
+        }
+        $stmt->close();
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>PST - Customer Login</title>
+    <title>PST - Customer Feedback</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,27 +56,21 @@ if (isset($_POST['login'])) {
             --accent-blue: #3a5673;
             --text-light: #f8f5f2;
             --text-dark: #1a1a2e;
-            --button-width: 280px;
             --transition-speed: 0.4s;
-        }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            --rating-high: #4a9c5a; /* Green for high ratings */
+            --rating-medium: #d4a017; /* Gold for medium ratings */
+            --rating-low: #c45c5c; /* Red for low ratings */
         }
         
         body {
+            background-color: var(--primary-dark);
+            color: var(--text-light);
+            font-family: 'Poppins', sans-serif;
             margin: 0;
             padding: 0;
-            position: relative;
             min-height: 100vh;
-            font-family: 'Poppins', sans-serif;
-            color: var(--text-light);
-            line-height: 1.6;
-            overflow-x: hidden;
         }
-
+        
         body::before {
             content: '';
             position: fixed;
@@ -75,358 +84,262 @@ if (isset($_POST['login'])) {
             background-size: cover;
             z-index: -1;
         }
-
+        
         .full-height {
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
-        }
-
-        .flex-center {
+            justify-content: center;
             align-items: center;
-            display: flex;
-            justify-content: center;
-            flex: 1;
-            padding: 20px;
+            padding: 2rem;
         }
-
-        .login-container {
-            text-align: center;
-            background-color: rgba(26, 26, 46, 0.8);
-            padding: 3rem 2.5rem;
-            border-radius: 12px;
+        
+        .content {
+            max-width: 600px;
             width: 100%;
-            max-width: 500px;
-            border: 1px solid rgba(192, 160, 98, 0.3);
-            backdrop-filter: blur(8px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            transition: transform var(--transition-speed) ease, box-shadow var(--transition-speed) ease;
-            margin: 20px 0;
+            text-align: center;
         }
-
-        .login-container:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-        }
-
+        
         .logo-container {
-            margin-bottom: 1.5rem;
-            display: flex;
-            justify-content: center;
-        }
-
-        .logo {
-            height: 80px;
-            width: auto;
-            max-width: 100%;
-            object-fit: contain;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-            transition: transform 0.5s ease;
-        }
-
-        .logo:hover {
-            transform: scale(1.05) rotate(-2deg);
-        }
-
-        .title {
-            font-size: clamp(1.8rem, 6vw, 2.5rem);
-            font-family: 'Fredoka', sans-serif;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: rgb(161, 3, 3);
-            position: relative;
-            display: inline-block;
-            text-shadow:
-                0 0 1px #ff5f1f,
-                0 0 3px #ff5f1f,
-                2px 2px 0 #ff5f1f,
-                -2px -2px 0 #ff5f1f,
-                3px 3px 4px orange;
-        }
-
-        .title::after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60%;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
-        }
-
-        .subtitle {
-            font-size: clamp(0.9rem, 3vw, 1.1rem);
             margin-bottom: 2rem;
-            color: var(--text-light);
-            font-family: 'Poppins', sans-serif;
-            font-weight: 400;
-            line-height: 1.8;
         }
-
+        
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+        
+        .title {
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .tagline {
+            color: var(--text-light);
+            opacity: 0.8;
+            margin-bottom: 2rem;
+        }
+        
+        /* Feedback Form Styles - Updated to match dashboard */
+        .feedback-form {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(192, 160, 98, 0.2);
+            border-radius: 10px;
+            padding: 2rem;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
         .form-group {
             margin-bottom: 1.5rem;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
             text-align: left;
         }
-
-        .input-group {
-            position: relative;
-            display: flex;
-            width: 100%;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .input-group-prepend {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            background: rgba(26, 26, 46, 0.6);
-            border: 1px solid rgba(192, 160, 98, 0.3);
-            border-right: none;
-        }
-
-        .input-group-text {
-            color: var(--accent-gold);
-            font-size: 1rem;
-        }
-
+        
         .form-control {
-            flex: 1;
+            width: 100%;
             padding: 0.75rem 1rem;
             background: rgba(26, 26, 46, 0.6);
             border: 1px solid rgba(192, 160, 98, 0.3);
-            border-left: none;
+            border-radius: 8px;
             color: var(--text-light);
             font-family: 'Poppins', sans-serif;
             transition: all var(--transition-speed) ease;
         }
-
+        
+        textarea.form-control {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
         .form-control:focus {
             outline: none;
-            box-shadow: 0 0 0 2px var(--accent-gold);
+            border-color: var(--accent-gold);
+            box-shadow: 0 0 0 2px rgba(192, 160, 98, 0.3);
         }
-
-        .btn-login {
-            display: inline-block;
-            padding: 1rem 1.5rem;
-            font-size: clamp(0.85rem, 3vw, 1rem);
-            font-weight: 500;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all var(--transition-speed) ease;
-            width: 100%;
-            background: linear-gradient(135deg, rgba(158, 43, 43, 0.7), rgba(158, 43, 43, 0.5));
-            border: 1px solid rgba(158, 43, 43, 0.4);
-            color: var(--text-light);
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-            margin-top: 1rem;
+        
+        .rating-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            justify-content: center;
         }
-
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: all 0.6s ease;
+        
+        .rating-option {
+            display: none;
         }
-
-        .btn-login:hover::before {
-            left: 100%;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-            filter: brightness(1.15);
-        }
-
-        .btn-create {
-            display: inline-block;
-            padding: 1rem 1.5rem;
-            font-size: clamp(0.85rem, 3vw, 1rem);
-            font-weight: 500;
-            text-decoration: none;
-            border-radius: 8px;
-            transition: all var(--transition-speed) ease;
-            width: 100%;
-            background: linear-gradient(135deg, rgba(74, 107, 87, 0.7), rgba(74, 107, 87, 0.5));
-            border: 1px solid rgba(74, 107, 87, 0.4);
-            color: var(--text-light);
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            position: relative;
-            overflow: hidden;
-            margin-top: 1rem;
-        }
-
-        .btn-create:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-            filter: brightness(1.15);
-        }
-
-        .remember-me {
+        
+        .rating-label {
             display: flex;
             align-items: center;
-            margin: 1.5rem 0;
-            font-size: 0.9rem;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(26, 26, 46, 0.6);
+            border: 1px solid rgba(192, 160, 98, 0.3);
+            color: var(--accent-gold);
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
         }
-
-        .remember-me input {
-            margin-right: 0.5rem;
-            accent-color: var(--accent-gold);
+        
+        .rating-option:checked + .rating-label {
+            background: var(--accent-gold);
+            color: var(--text-dark);
+            transform: scale(1.1);
         }
-
-        .error-message {
-            color: #ff6b6b;
+        
+        .btn-submit {
+            background: linear-gradient(135deg, rgba(192, 160, 98, 0.8), rgba(192, 160, 98, 0.6));
+            border: 1px solid rgba(192, 160, 98, 0.4);
+            color: var(--text-dark);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            width: 100%;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            filter: brightness(1.15);
+        }
+        
+        .success-message {
+            color: var(--accent-green);
             text-align: center;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-            padding: 0.5rem;
-            background: rgba(158, 43, 43, 0.2);
-            border-radius: 6px;
-            border-left: 3px solid var(--accent-red);
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
             margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(74, 107, 87, 0.2);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-green);
+            display: <?php echo $success ? 'block' : 'none'; ?>;
         }
-
-        .button-group .btn-login {
-            flex: 1;
-            margin-top: 0;
+        
+        .error-message {
+            color: var(--accent-red);
+            text-align: center;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(158, 43, 43, 0.2);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-red);
+            margin-bottom: 1rem;
+            display: <?php echo $error ? 'block' : 'none'; ?>;
         }
-
-        .button-group .btn-create {
-            flex: 1;
-            margin-top: 0;
+        
+        /* Animations */
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-out forwards;
         }
-
+        
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        .delay-4 { animation-delay: 0.8s; }
+        
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .animate-fade-in {
-            animation: fadeIn 0.8s ease-out forwards;
-        }
-
-        .delay-1 { animation-delay: 0.2s; }
-        .delay-2 { animation-delay: 0.4s; }
-        .delay-3 { animation-delay: 0.6s; }
-
+        
         @media (max-width: 768px) {
-            .login-container {
-                padding: 2rem 1.5rem;
-                width: calc(100% - 30px);
+            .content {
+                padding: 1rem;
+            }
+            
+            .feedback-form {
+                padding: 1.5rem;
                 backdrop-filter: blur(4px);
             }
-            
-            .logo {
-                height: 70px;
-            }
-
-            .button-group {
-                flex-direction: column;
-                gap: 10px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .login-container {
-                padding: 1.8rem 1.2rem;
-                border-radius: 8px;
-            }
-            
-            .logo {
-                height: 60px;
-            }
-        }
-
-        a:focus-visible,
-        button:focus-visible,
-        input:focus-visible {
-            outline: 2px solid var(--accent-gold);
-            outline-offset: 3px;
         }
     </style>
 </head>
 <body>
-    <div class="flex-center position-ref full-height">
-        <div class="login-container animate-fade-in">
-            <div class="logo-container delay-1">
-                <img src="img/pst-logo.png" alt="PST Logo" class="logo">
+    <div class="full-height">
+        <div class="flex-center">
+            <div class="content animate-fade-in">
+                <div class="logo-container delay-1">
+                    <img src="img/pst-logo.png" alt="Pastil sa Tabi Logo" class="logo">
+                </div>
+                
+                <h1 class="title animate-fade-in delay-1">
+                    CUSTOMER FEEDBACK
+                </h1>
+                
+                <p class="tagline animate-fade-in delay-2">
+                    We value your opinion! Please share your experience with our system.
+                </p>
+
+                <div class="feedback-form animate-fade-in delay-3">
+                    <?php if ($error): ?>
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($error); ?>
+                        </div>
+                    <?php endif; ?>
+                    
+                    <form id="feedbackForm" method="POST" action="">
+                        <div class="form-group">
+                            <label class="form-label">How would you rate your experience?</label>
+                            <div class="rating-container">
+                                <input type="radio" id="rating1" name="rating" value="1" class="rating-option" <?php echo (isset($_POST['rating']) && $_POST['rating'] == 1) ? 'checked' : ''; ?>>
+                                <label for="rating1" class="rating-label">1</label>
+                                
+                                <input type="radio" id="rating2" name="rating" value="2" class="rating-option" <?php echo (isset($_POST['rating']) && $_POST['rating'] == 2) ? 'checked' : ''; ?>>
+                                <label for="rating2" class="rating-label">2</label>
+                                
+                                <input type="radio" id="rating3" name="rating" value="3" class="rating-option" <?php echo (isset($_POST['rating']) && $_POST['rating'] == 3) ? 'checked' : ''; ?>>
+                                <label for="rating3" class="rating-label">3</label>
+                                
+                                <input type="radio" id="rating4" name="rating" value="4" class="rating-option" <?php echo (isset($_POST['rating']) && $_POST['rating'] == 4) ? 'checked' : ''; ?>>
+                                <label for="rating4" class="rating-label">4</label>
+                                
+                                <input type="radio" id="rating5" name="rating" value="5" class="rating-option" <?php echo (!isset($_POST['rating']) || (isset($_POST['rating']) && $_POST['rating'] == 5)) ? 'checked' : ''; ?>>
+                                <label fo   r="rating5" class="rating-label">5</label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="feedback" class="form-label">Your Feedback</label>
+                            <textarea id="feedback" name="feedback" class="form-control" required placeholder="What did you like or what can we improve?"><?php echo isset($_POST['feedback']) ? htmlspecialchars($_POST['feedback']) : ''; ?></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email" class="form-label">Email (optional)</label>
+                            <input type="email" id="email" name="email" class="form-control" placeholder="If you'd like us to follow up" value="<?php echo isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>">
+                        </div>
+                        
+                        <button type="submit" class="btn-submit animate-fade-in delay-4">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>Submit Feedback</span>
+                        </button>
+                    </form>
+                    
+                    <?php if ($success): ?>
+                        <div id="successMessage" class="success-message">
+                            <i class="fas fa-check-circle"></i> Thank you for your feedback! We appreciate your time.
+                        </div>
+                        <script>
+                            // Reset form after showing success message
+                            setTimeout(() => {
+                                document.getElementById('feedbackForm').reset();
+                            }, 3000);
+                        </script>
+                    <?php endif; ?>
+                </div>
             </div>
-            
-            <h1 class="title animate-fade-in delay-1">
-                CUSTOMER LOGIN
-            </h1>
-            
-            <p class="subtitle animate-fade-in delay-2">
-                Sign in to access your account
-            </p>
-
-            <?php if(isset($err)) { echo "<div class='error-message animate-fade-in delay-2'>$err</div>"; } ?>
-
-            <form method="post" role="form" class="animate-fade-in delay-3">
-                <div class="form-group">
-                    <div class="input-group">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
-                        </div>
-                        <input class="form-control" required name="customer_email" placeholder="Email" type="email">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <div class="input-group">
-                        <div class="input-group-prepend">
-                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                        </div>
-                        <input class="form-control" required name="customer_password" placeholder="Password" type="password">
-                    </div>
-                </div>
-                <div class="remember-me">
-                    <input type="checkbox" id="rememberCheck">
-                    <label for="rememberCheck">Remember Me</label>
-                </div>
-                <div class="button-group">
-                    <button type="submit" name="login" class="btn-login">LOG IN</button>
-                    <a href="create_account.php" class="btn-create">CREATE ACCOUNT</a>
-                </div>
-            </form>
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const img = new Image();
-            img.src = 'img/bgimg.jpg';
-            
-            img.onload = function() {
-                document.body.style.backgroundImage = linear-gradient(rgba(26, 26, 46, 0.85), rgba(26, 26, 46, 0.9)), url('${img.src}');
-            };
-            
-            img.onerror = function() {
-                document.body.style.background = 'linear-gradient(#1a1a2e, #16213e)';
-            };
-            
-            const logo = new Image();
-            logo.src = 'img/pst-logo.png';
-            
-            setTimeout(() => {
-                document.body.classList.add('loaded');
-            }, 100);
-        });
-    </script>
 </body>
 </html>

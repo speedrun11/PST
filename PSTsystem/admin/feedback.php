@@ -3,19 +3,22 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-if (isset($_GET['cancel'])) {
-    $id = $_GET['cancel'];
-    $adn = "DELETE FROM  rpos_orders  WHERE  order_id = ?";
+
+if (isset($_GET['delete'])) {
+    $id = $_GET['delete'];
+    $adn = "DELETE FROM rpos_feedback WHERE feedback_id = ?";
     $stmt = $mysqli->prepare($adn);
-    $stmt->bind_param('s', $id);
+    $stmt->bind_param('i', $id);
     $stmt->execute();
     $stmt->close();
+    
     if ($stmt) {
-        $success = "Deleted" && header("refresh:1; url=payments.php");
+        $success = "Feedback deleted" && header("refresh:1; url=feedback.php");
     } else {
         $err = "Try Again Later";
     }
 }
+
 require_once('partials/_head.php');
 ?>
 
@@ -24,7 +27,7 @@ require_once('partials/_head.php');
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>PST - My Orders</title>
+    <title>PST - Customer Feedback</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,6 +47,9 @@ require_once('partials/_head.php');
             --text-light: #f8f5f2;
             --text-dark: #1a1a2e;
             --transition-speed: 0.4s;
+            --rating-high: #4a9c5a; /* Green for high ratings */
+            --rating-medium: #d4a017; /* Gold for medium ratings */
+            --rating-low: #c45c5c; /* Red for low ratings */
         }
         
         body {
@@ -53,7 +59,7 @@ require_once('partials/_head.php');
         }
         
         .header {
-            background: url(../admin/assets/img/theme/pastil.jpg) no-repeat center center;
+            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         
@@ -76,18 +82,56 @@ require_once('partials/_head.php');
             border-color: rgba(192, 160, 98, 0.4);
         }
         
-        .card-header {
-            background: rgba(26, 26, 46, 0.9);
-            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
-        }
-        
-        .card-header h3 {
-            color: var(--accent-gold);
+        .card-title {
+            color: var(--accent-gold) !important;
             font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
         }
         
         .table {
             color: var(--text-light);
+        }
+        
+        .table thead th {
+            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
+            font-weight: 500;
+        }
+        
+        .table tbody tr {
+            border-bottom: 1px solid rgba(192, 160, 98, 0.1);
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .table tbody tr:hover {
+            background: rgba(192, 160, 98, 0.1);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(158, 43, 43, 0.8), rgba(158, 43, 43, 0.6));
+            border: 1px solid rgba(158, 43, 43, 0.4);
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+            filter: brightness(1.15);
+            border-color: rgba(158, 43, 43, 0.6);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, rgba(62, 62, 62, 0.8), rgba(40, 40, 40, 0.6));
+            border: 1px solid rgba(158, 43, 43, 0.4);
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, rgba(158, 43, 43, 0.8), rgba(120, 30, 30, 0.6));
+        }
+        
+        .text-gold {
+            color: var(--accent-gold) !important;
         }
         
         .table thead {
@@ -114,55 +158,27 @@ require_once('partials/_head.php');
             border-top: 1px solid rgba(192, 160, 98, 0.1);
         }
         
-        .table tbody tr {
-            transition: all var(--transition-speed) ease;
-        }
-        
         .table tbody tr:hover {
             background: rgba(192, 160, 98, 0.1) !important;
             transform: translateX(5px);
         }
         
-        .table-responsive {
-            border-radius: 0 0 10px 10px;
-            overflow: hidden;
+        .card-header {
+            background: rgba(26, 26, 46, 0.9);
+            border-bottom: 1px solid rgba(192, 160, 98, 0.3);
         }
         
-        .btn-success {
-            background: linear-gradient(135deg, rgba(74, 107, 87, 0.8), rgba(74, 107, 87, 0.6));
-            border: 1px solid rgba(74, 107, 87, 0.4);
-            color: var(--text-light);
-            transition: all var(--transition-speed) ease;
+        .card-header h3 {
+            color: var(--accent-gold);
+            font-family: 'Fredoka', sans-serif;
         }
         
-        .btn-danger {
-            background: linear-gradient(135deg, rgba(158, 43, 43, 0.8), rgba(158, 43, 43, 0.6));
-            border: 1px solid rgba(158, 43, 43, 0.4);
-            color: var(--text-light);
-            transition: all var(--transition-speed) ease;
-        }
-        
-        .btn-outline-success {
-            border: 1px solid var(--accent-green);
-            color: var(--accent-green);
-            transition: all var(--transition-speed) ease;
-        }
-        
-        .btn-success:hover, .btn-danger:hover, .btn-outline-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-            filter: brightness(1.15);
-            color: var(--text-light);
-        }
-        
-        .btn-outline-success:hover {
-            background: rgba(74, 107, 87, 0.2);
-            border-color: var(--accent-green);
-        }
-        
-        .text-success {
-            color: var(--accent-green) !important;
-        }
+        /* Rating Colors */
+        .rating-5 { color: var(--rating-high); }
+        .rating-4 { color: var(--rating-high); }
+        .rating-3 { color: var(--rating-medium); }
+        .rating-2 { color: var(--rating-low); }
+        .rating-1 { color: var(--rating-low); }
         
         @media (max-width: 768px) {
             .table thead th {
@@ -174,62 +190,42 @@ require_once('partials/_head.php');
                 padding: 0.75rem;
                 font-size: 0.85rem;
             }
+            
+            .btn {
+                padding: 0.375rem 0.5rem;
+                font-size: 0.75rem;
+            }
         }
-                    .text-gold {
-                color: var(--accent-gold) !important;
-            }
-
-            .sidebar .nav-link:hover {
-                color: var(--accent-gold) !important;
-                background: rgba(192, 160, 98, 0.1);
-            }
-
-            .sidebar .dropdown-menu {
-                background-color: rgba(26, 26, 46, 0.95);
-                border: 1px solid rgba(192, 160, 98, 0.2);
-            }
-
-            .sidebar .dropdown-item:hover {
-                background-color: rgba(192, 160, 98, 0.1);
-            }
     </style>
 </head>
 <body>
   <!-- Sidenav -->
-  <?php
-  require_once('partials/_sidebar.php');
-  ?>
+  <?php require_once('partials/_sidebar.php'); ?>
+  
   <!-- Main content -->
   <div class="main-content">
     <!-- Top navbar -->
-    <?php
-    require_once('partials/_topnav.php');
-    ?>
+    <?php require_once('partials/_topnav.php'); ?>
+    
     <!-- Header -->
     <div class="header pb-8 pt-5 pt-md-8">
       <span class="mask bg-gradient-dark opacity-8"></span>
       <div class="container-fluid">
         <div class="header-body">
-          <!-- Card stats would go here if needed -->
+          <!-- You can add card stats here like in dashboard if needed -->
         </div>
       </div>
     </div>
+    
     <!-- Page content -->
     <div class="container-fluid mt--7">
-      <!-- Table -->
       <div class="row">
         <div class="col">
           <div class="card shadow">
             <div class="card-header border-0">
               <div class="row align-items-center">
                 <div class="col">
-                  <h3 class="mb-0">My Orders</h3>
-                </div>
-                <div class="col text-right">
-                  <a href="orders.php" class="btn btn-outline-success">
-                    <i class="fas fa-plus"></i> <i class="fas fa-utensils"></i>
-                    Make A New Order
-                  </a>
+                  <h3 class="mb-0">Customer Feedback</h3>
                 </div>
               </div>
             </div>
@@ -237,43 +233,33 @@ require_once('partials/_head.php');
               <table class="table align-items-center table-flush">
                 <thead class="thead-dark">
                   <tr>
-                    <th scope="col">Code</th>
-                    <th scope="col">Customer</th>
-                    <th scope="col">Product</th>
-                    <th scope="col">Total Price</th>
+                    <th class="text-gold" scope="col">Rating</th>
+                    <th class="text-gold" scope="col">Feedback</th>
+                    <th scope="col">Email</th>
                     <th scope="col">Date</th>
-                    <th scope="col">Action</th>
+                    <th scope="col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <?php
-                  $customer_id = $_SESSION['customer_id'];
-                  $ret = "SELECT * FROM  rpos_orders WHERE order_status ='' AND customer_id = '$customer_id'  ORDER BY `rpos_orders`.`created_at` DESC  ";
+                  $ret = "SELECT * FROM rpos_feedback ORDER BY created_at DESC";
                   $stmt = $mysqli->prepare($ret);
                   $stmt->execute();
                   $res = $stmt->get_result();
-                  while ($order = $res->fetch_object()) {
-                      $total = ($order->prod_price * $order->prod_qty);
+                  
+                  while ($feedback = $res->fetch_object()) {
+                      $rating_stars = str_repeat('★', $feedback->rating) . str_repeat('☆', 5 - $feedback->rating);
                   ?>
                     <tr>
-                      <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
-                      <td><?php echo $order->customer_name; ?></td>
-                      <td><?php echo $order->prod_name; ?></td>
-                      <td>₱<?php echo $total; ?></td>
-                      <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
+                      <td class="rating-<?php echo $feedback->rating; ?>">
+                        <?php echo $rating_stars; ?>
+                      </td>
+                      <td><?php echo htmlspecialchars($feedback->feedback_text); ?></td>
+                      <td><?php echo $feedback->email ? htmlspecialchars($feedback->email) : 'N/A'; ?></td>
+                      <td><?php echo date('M d, Y h:i A', strtotime($feedback->created_at)); ?></td>
                       <td>
-                        <a href="pay_order.php?order_code=<?php echo $order->order_code;?>&customer_id=<?php echo $order->customer_id;?>&order_status=Paid">
-                          <button class="btn btn-sm btn-success">
-                            <i class="fas fa-handshake"></i>
-                            Pay Order
-                          </button>
-                        </a>
-
-                        <a href="payments.php?cancel=<?php echo $order->order_id; ?>">
-                          <button class="btn btn-sm btn-danger">
-                            <i class="fas fa-window-close"></i>
-                            Cancel Order
-                          </button>
+                        <a href="feedback.php?delete=<?php echo $feedback->feedback_id; ?>" class="btn btn-sm btn-danger">
+                          <i class="fas fa-trash"></i> Delete
                         </a>
                       </td>
                     </tr>
@@ -284,15 +270,13 @@ require_once('partials/_head.php');
           </div>
         </div>
       </div>
+      
       <!-- Footer -->
-      <?php
-      require_once('partials/_footer.php');
-      ?>
+      <?php require_once('partials/_footer.php'); ?>
     </div>
   </div>
+  
   <!-- Argon Scripts -->
-  <?php
-  require_once('partials/_scripts.php');
-  ?>
+  <?php require_once('partials/_scripts.php'); ?>
 </body>
 </html>
