@@ -1,0 +1,128 @@
+/* Inventory System Specific Styles */
+:root {
+    --inventory-primary: #3a5673;
+    --inventory-secondary: #4a6b57;
+    --inventory-accent: #c0a062;
+    --inventory-alert: #9e2b2b;
+    --inventory-light: #f8f5f2;
+    --inventory-dark: #1a1a2e;
+}
+
+/* Inventory Cards */
+.inventory-card {
+    background: rgba(26, 26, 46, 0.85);
+    border: 1px solid rgba(58, 86, 115, 0.3);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.inventory-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    border-color: rgba(58, 86, 115, 0.5);
+}
+
+.inventory-card-header {
+    background: rgba(58, 86, 115, 0.2) !important;
+    border-bottom: 1px solid rgba(58, 86, 115, 0.3) !important;
+}
+
+/* Stock Level Indicators */
+.stock-level-critical {
+    background-color: rgba(158, 43, 43, 0.2);
+    border-left: 4px solid var(--inventory-alert);
+}
+
+.stock-level-low {
+    background-color: rgba(192, 160, 98, 0.2);
+    border-left: 4px solid var(--inventory-accent);
+}
+
+.stock-level-ok {
+    background-color: rgba(74, 107, 87, 0.2);
+    border-left: 4px solid var(--inventory-secondary);
+}
+
+/* Movement Type Badges */
+.movement-in {
+    background-color: rgba(74, 107, 87, 0.2);
+    color: var(--inventory-secondary);
+}
+
+.movement-out {
+    background-color: rgba(158, 43, 43, 0.2);
+    color: var(--inventory-alert);
+}
+
+/* Inventory Tables */
+.inventory-table thead th {
+    background: rgba(58, 86, 115, 0.3) !important;
+    color: var(--inventory-accent) !important;
+}
+
+.inventory-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.inventory-table tbody tr:hover {
+    background: rgba(58, 86, 115, 0.1) !important;
+}
+
+/* Barcode Scanner Input */
+.barcode-input {
+    letter-spacing: 2px;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+}
+
+/* Inventory Forms */
+.inventory-form-label {
+    color: var(--inventory-accent);
+    font-weight: 500;
+}
+
+.inventory-form-control {
+    background: rgba(26, 26, 46, 0.7);
+    border: 1px solid rgba(58, 86, 115, 0.3);
+    color: var(--inventory-light);
+}
+
+.inventory-form-control:focus {
+    background: rgba(26, 26, 46, 0.9);
+    border-color: var(--inventory-accent);
+    color: var(--inventory-light);
+    box-shadow: 0 0 0 0.2rem rgba(192, 160, 98, 0.25);
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .inventory-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .inventory-table td, 
+    .inventory-table th {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* Custom Scrollbar for Inventory Lists */
+.inventory-scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: var(--inventory-accent) rgba(26, 26, 46, 0.5);
+}
+
+.inventory-scrollable::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.inventory-scrollable::-webkit-scrollbar-track {
+    background: rgba(26, 26, 46, 0.5);
+}
+
+.inventory-scrollable::-webkit-scrollbar-thumb {
+    background-color: var(--inventory-accent);
+    border-radius: 4px;
+}

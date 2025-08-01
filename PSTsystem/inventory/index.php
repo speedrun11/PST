@@ -20,7 +20,7 @@ if (isset($_POST['login'])) {
     $_SESSION['staff_role'] = $staff_role;
     
     if ($rs) {
-        header("location:dashboard.php");
+        header("location:inventory_dashboard.php");
     } else {
         $err = "Access Denied: You don't have inventory management privileges";
     }

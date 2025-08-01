@@ -258,25 +258,6 @@ require_once('partials/_analytics.php');
           <!-- Card stats -->
           <div class="row">
             <div class="col-xl-3 col-lg-6">
-              <a href="customers.php">
-                <div class="card card-stats mb-4 mb-xl-0">
-                  <div class="card-body">
-                    <div class="row">
-                      <div class="col">
-                        <h5 class="card-title text-uppercase mb-0">Customers</h5>
-                        <span class="h2 font-weight-bold mb-0"><?php echo $customers; ?></span>
-                      </div>
-                      <div class="col-auto">
-                        <div class="icon icon-shape text-white rounded-circle shadow">
-                          <i class="fas fa-users"></i>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </a>
-            </div>
-            <div class="col-xl-3 col-lg-6">
               <a href="products.php">
                 <div class="card card-stats mb-4 mb-xl-0">
                   <div class="card-body">
@@ -325,7 +306,7 @@ require_once('partials/_analytics.php');
                       </div>
                       <div class="col-auto">
                         <div class="icon icon-shape text-white rounded-circle shadow">
-                          <i class="fas fa-dollar-sign"></i>
+                          <i class="fas fa-peso-sign"></i>
                         </div>
                       </div>
                     </div>

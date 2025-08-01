@@ -86,11 +86,6 @@ while ($staff = $res->fetch_object()) {
             </a>
           </li>
           <li class="nav-item">
-            <a class="nav-link text-light" href="customers.php">
-              <i class="fas fa-users text-gold"></i> Customers
-            </a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link text-light" href="products.php">
               <i class="ni ni-bullet-list-67 text-gold"></i> Products
             </a>
