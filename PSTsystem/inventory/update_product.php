@@ -2,7 +2,6 @@
 session_start();
 include('config/config.php');
 include('config/checklogin.php');
-include('config/activity_logger.php');
 check_login();
 require_once('partials/_head.php');
 
@@ -32,6 +31,7 @@ if(isset($_POST['update_product'])) {
     $prod_price = (float)$_POST['prod_price'];
     $prod_quantity = (int)$_POST['prod_quantity'];
     $prod_threshold = (int)$_POST['prod_threshold'];
+    $staff_id = $_SESSION['staff_id'];
     
     // Validate inputs
     if(empty($prod_code) || empty($prod_name) || empty($prod_category) || $prod_price <= 0) {
@@ -120,20 +120,48 @@ if(isset($_POST['update_product'])) {
             throw new Exception("No changes made or product not found");
         }
         
-        // Log the activity if quantity changed
-        if($product->prod_quantity != $prod_quantity) {
-            $quantity_change = $prod_quantity - $product->prod_quantity;
-            log_activity(
-                $mysqli, 
+        // Prepare activity log data
+        $activity_type = 'Update';
+        $reference_code = 'UPD-'.uniqid();
+        $quantity_change = $prod_quantity - $product->prod_quantity;
+        $previous_quantity = $product->prod_quantity;
+        $new_quantity = $prod_quantity;
+        
+        // Determine notes based on changes
+        $changes = [];
+        if($prod_code != $product->prod_code) $changes[] = "code changed";
+        if($prod_name != $product->prod_name) $changes[] = "name changed";
+        if($prod_category != $product->prod_category) $changes[] = "category changed";
+        if($prod_price != $product->prod_price) $changes[] = "price changed";
+        if($prod_quantity != $product->prod_quantity) $changes[] = "quantity changed";
+        if($prod_threshold != $product->prod_threshold) $changes[] = "threshold changed";
+        if($prod_img != $product->prod_img) $changes[] = "image changed";
+        
+        $notes = "Product updated: " . implode(', ', $changes);
+        
+        // Log the activity directly
+        $log_query = "INSERT INTO rpos_inventory_logs 
+                     (product_id, activity_type, quantity_change, previous_quantity, new_quantity, staff_id, notes, reference_code) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $log_stmt = $mysqli->prepare($log_query);
+        
+        if ($log_stmt) {
+            $log_stmt->bind_param('isiiiiss', 
                 $prod_id, 
-                'Adjustment', 
+                $activity_type, 
                 $quantity_change, 
-                $product->prod_quantity, 
-                $prod_quantity, 
-                $_SESSION['staff_id'],
-                'Manual quantity adjustment',
-                'ADJ-' . uniqid()
-            );
+                $previous_quantity, 
+                $new_quantity, 
+                $staff_id, 
+                $notes, 
+                $reference_code);
+            
+            if (!$log_stmt->execute()) {
+                throw new Exception("Failed to log update activity: " . $log_stmt->error);
+            }
+            $log_stmt->close();
+        } else {
+            throw new Exception("Failed to prepare log statement: " . $mysqli->error);
         }
         
         $mysqli->commit();
@@ -149,6 +177,7 @@ if(isset($_POST['update_product'])) {
 }
 ?>
 
+<!-- The rest of the HTML remains exactly the same -->
 <body>
   <!-- Sidenav -->
   <?php require_once('partials/_sidebar.php'); ?>

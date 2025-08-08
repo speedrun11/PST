@@ -2,16 +2,15 @@
 session_start();
 include('config/config.php');
 include('config/checklogin.php');
-include('config/activity_logger.php');
 check_login();
 require_once('partials/_head.php');
 
 // Handle form submission
 if (isset($_POST['add_supplier'])) {
-    $name = $_POST['name'];
-    $phone = $_POST['phone'];
-    $email = $_POST['email'];
-    $address = $_POST['address'];
+    $name = trim($_POST['name']);
+    $phone = trim($_POST['phone']);
+    $email = trim($_POST['email']);
+    $address = trim($_POST['address']);
 
     // Validate inputs
     if (empty($name) || empty($phone)) {
@@ -26,15 +25,6 @@ if (isset($_POST['add_supplier'])) {
     $stmt->bind_param('ssss', $name, $phone, $email, $address);
 
     if ($stmt->execute()) {
-        // Log the activity
-        log_supplier_activity(
-            $mysqli,
-            'Supplier Add',
-            $_SESSION['staff_id'],
-            "Added supplier: $name",
-            'SUP-ADD-' . uniqid()
-        );
-        
         $_SESSION['success'] = "Supplier added successfully";
         header("Location: suppliers.php");
         exit;
@@ -46,6 +36,14 @@ if (isset($_POST['add_supplier'])) {
 }
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Add Supplier - Inventory Management</title>
+  <?php require_once('partials/_head.php'); ?>
+</head>
 <body>
   <!-- Sidenav -->
   <?php require_once('partials/_sidebar.php'); ?>

@@ -22,27 +22,23 @@ if(isset($_GET['delete'])) {
         $stmt->fetch();
         $stmt->close();
         
-        if($product_count == 0) {
-            $delete = "DELETE FROM rpos_categories WHERE category_name = ?";
-            $stmt = $mysqli->prepare($delete);
+        if($product_count > 0) {
+            // Update all products with this category to have no category
+            $update = "UPDATE rpos_products SET prod_category = NULL WHERE prod_category = ?";
+            $stmt = $mysqli->prepare($update);
             $stmt->bind_param('s', $category_name);
             $stmt->execute();
-            
-            if($stmt->affected_rows > 0) {
-                $mysqli->commit();
-                $_SESSION['success'] = "Category deleted successfully";
-            } else {
-                $mysqli->rollback();
-                $_SESSION['error'] = "Failed to delete category";
-            }
-        } else {
-            $mysqli->rollback();
-            $_SESSION['error'] = "Cannot delete category - it has associated products";
         }
+        
+        $_SESSION['success'] = "Category removed from all products";
+        $mysqli->commit();
     } catch (Exception $e) {
         $mysqli->rollback();
         $_SESSION['error'] = "Error: " . $e->getMessage();
     }
+    
+    header("Location: categories.php");
+    exit;
 }
 ?>
 

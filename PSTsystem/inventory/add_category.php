@@ -31,10 +31,6 @@ if(isset($_POST['add_category'])) {
         exit;
     }
     
-    // Since we don't have a categories table, we'll just add a product with this category
-    // to ensure it appears in the categories list (or you can modify your categories.php to show all possible categories)
-    // Alternatively, you could create a categories table at this point
-    
     $_SESSION['success'] = "Category added successfully";
     header("Location: categories.php");
     exit;

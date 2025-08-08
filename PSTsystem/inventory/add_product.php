@@ -2,12 +2,19 @@
 session_start();
 include('config/config.php');
 include('config/checklogin.php');
-include('config/activity_logger.php');
 check_login();
 require_once('partials/_head.php');
 
+// Function to generate random hexadecimal product ID
+function generateProductId($length = 10) {
+    return bin2hex(random_bytes($length/2));
+}
+
 // Handle form submission
 if(isset($_POST['add_product'])) {
+    // Generate product ID
+    $prod_id = generateProductId(); // This will create IDs like 52b31af7f6
+    
     // Retrieve form data
     $prod_code = $_POST['prod_code'];
     $prod_name = $_POST['prod_name'];
@@ -23,7 +30,7 @@ if(isset($_POST['add_product'])) {
         $target_file = $target_dir . basename($_FILES["prod_img"]["name"]);
         $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
         
-        // Check if image file is a actual image
+        // Check if image file is an actual image
         $check = getimagesize($_FILES["prod_img"]["tmp_name"]);
         if($check !== false) {
             // Generate unique filename
@@ -38,30 +45,67 @@ if(isset($_POST['add_product'])) {
         }
     }
     
-    // Insert into database
-    $query = "INSERT INTO rpos_products (prod_code, prod_name, prod_category, prod_price, prod_quantity, prod_threshold, prod_img) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('sssdiis', $prod_code, $prod_name, $prod_category, $prod_price, $prod_quantity, $prod_threshold, $prod_img);
-    
-    if($stmt->execute()) {
-        // Log the activity
-        log_activity(
-            $mysqli, 
-            $mysqli->insert_id, // new product ID
-            'Add', 
-            $prod_quantity, 
-            0, 
-            $prod_quantity, 
-            $_SESSION['staff_id'],
-            'Product added to inventory',
-            'ADD-' . uniqid()
-        );
-        
-        $success = "Product added successfully";
-        header("Location: products.php");
-        exit;
+    // Validate product code is unique
+    $check_query = "SELECT prod_id FROM rpos_products WHERE prod_code = ?";
+    $check_stmt = $mysqli->prepare($check_query);
+    $check_stmt->bind_param('s', $prod_code);
+    $check_stmt->execute();
+    $check_result = $check_stmt->get_result();
+
+    if ($check_result->num_rows > 0) {
+        $err = "Product code already exists";
+        $check_stmt->close();
     } else {
-        $err = "Failed to add product";
+        $check_stmt->close();
+        
+        // Insert into database with generated prod_id
+        $query = "INSERT INTO rpos_products (prod_id, prod_code, prod_name, prod_category, prod_price, prod_quantity, prod_threshold, prod_img) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $mysqli->prepare($query);
+        
+        if (!$stmt) {
+            $err = "Prepare failed: " . $mysqli->error;
+        } else {
+            $stmt->bind_param('ssssdiis', $prod_id, $prod_code, $prod_name, $prod_category, $prod_price, $prod_quantity, $prod_threshold, $prod_img);
+            
+            if($stmt->execute()) {
+                // Get the inserted product ID
+                $product_id = $mysqli->insert_id;
+                
+                // Only log if we got a valid product ID
+                if ($product_id > 0) {
+                    // Set values for activity logging
+                    $previous_quantity = 0;
+                    $quantity_change = (int)$prod_quantity;
+                    $new_quantity = (int)$prod_quantity;
+                    $activity_type = 'Add';
+                    $notes = "Added new product: $prod_name";
+                    $reference_code = 'ADD-'.uniqid();
+                    
+                    // Log the activity
+                    $log_query = "INSERT INTO rpos_inventory_logs 
+                                 (product_id, activity_type, quantity_change, previous_quantity, new_quantity, staff_id, notes, reference_code) 
+                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                    $log_stmt = $mysqli->prepare($log_query);
+                    
+                    if ($log_stmt) {
+                        $log_stmt->bind_param('isiiiiss', $product_id, $activity_type, $quantity_change, $previous_quantity, $new_quantity, $_SESSION['staff_id'], $notes, $reference_code);
+                        if (!$log_stmt->execute()) {
+                            error_log("Failed to log activity: " . $log_stmt->error);
+                        }
+                        $log_stmt->close();
+                    } else {
+                        error_log("Failed to prepare log statement: " . $mysqli->error);
+                    }
+                }
+                
+                $_SESSION['success'] = "Product added successfully";
+                header("Location: products.php");
+                exit;
+            } else {
+                $err = "Failed to add product: " . $stmt->error;
+            }
+            $stmt->close();
+        }
     }
 }
 ?>

@@ -2,7 +2,6 @@
 session_start();
 include('config/config.php');
 include('config/checklogin.php');
-include('config/activity_logger.php');
 check_login();
 require_once('partials/_head.php');
 
@@ -85,18 +84,23 @@ if(isset($_POST['restock_product'])) {
             throw new Exception("Failed to update product quantity");
         }
         
-        // Log the inventory activity
-        log_activity(
-            $mysqli, 
-            $prod_id, 
-            'Restock', 
-            $restock_quantity, 
-            $current_quantity, 
-            $new_quantity, 
-            $staff_id,
-            $notes, 
-            $reference_code
-        );
+        // Log the inventory activity directly
+        $log_query = "INSERT INTO rpos_inventory_logs 
+                     (product_id, activity_type, quantity_change, previous_quantity, new_quantity, staff_id, notes, reference_code) 
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $log_stmt = $mysqli->prepare($log_query);
+        
+        if ($log_stmt) {
+            $activity_type = 'Restock';
+            $log_stmt->bind_param('isiiiiss', $prod_id, $activity_type, $restock_quantity, $current_quantity, $new_quantity, $staff_id, $notes, $reference_code);
+            
+            if (!$log_stmt->execute()) {
+                throw new Exception("Failed to log restock activity: " . $log_stmt->error);
+            }
+            $log_stmt->close();
+        } else {
+            throw new Exception("Failed to prepare log statement: " . $mysqli->error);
+        }
         
         $mysqli->commit();
         $_SESSION['success'] = "Product restocked successfully";
@@ -111,6 +115,7 @@ if(isset($_POST['restock_product'])) {
 }
 ?>
 
+<!-- The rest of the HTML remains exactly the same -->
 <body>
   <!-- Sidenav -->
   <?php require_once('partials/_sidebar.php'); ?>

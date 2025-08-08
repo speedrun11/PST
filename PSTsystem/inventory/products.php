@@ -355,6 +355,33 @@ if(isset($_GET['delete'])) {
       font-family: 'Open Sans', sans-serif;
     }
     
+    /* Fixed sidebar styling */
+    .sidebar {
+      position: fixed;
+      z-index: 1000;
+      height: 100vh;
+      overflow-y: auto;
+      width: 250px;
+      background: rgba(26, 26, 46, 0.95) !important;
+      border-right: 1px solid rgba(192, 160, 98, 0.2);
+    }
+    
+    /* Main content adjustments */
+    .main-content {
+      position: relative;
+      margin-left: 250px;
+      width: calc(100% - 250px);
+      min-height: 100vh;
+      z-index: 1;
+    }
+    
+    /* Top navigation bar */
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 800;
+    }
+    
     .header {
       background: url(../admin/assets/img/theme/pastil.jpg) no-repeat center center;
       background-size: cover;
@@ -387,6 +414,12 @@ if(isset($_GET['delete'])) {
     .card-header h3 {
       color: var(--accent-gold);
       font-family: 'Fredoka', sans-serif;
+    }
+    
+    /* Table responsive fixes */
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
     
     .text-gold {
@@ -477,11 +510,6 @@ if(isset($_GET['delete'])) {
       color: var(--accent-gold);
     }
     
-    .sidebar {
-      background: rgba(26, 26, 46, 0.9) !important;
-      border-right: 1px solid rgba(192, 160, 98, 0.2);
-    }
-    
     .footer {
       background: rgba(26, 26, 46, 0.9) !important;
       border-top: 1px solid rgba(192, 160, 98, 0.2);
@@ -500,7 +528,23 @@ if(isset($_GET['delete'])) {
       border-top: 1px solid rgba(192, 160, 98, 0.2) !important;
     }
     
+    /* Mobile responsive adjustments */
     @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        margin-left: -100%;
+        transition: all 0.3s;
+      }
+      
+      .sidebar.show {
+        margin-left: 0;
+      }
+      
+      .main-content {
+        width: 100%;
+        margin-left: 0;
+      }
+      
       .card {
         backdrop-filter: blur(4px);
       }
@@ -524,6 +568,11 @@ if(isset($_GET['delete'])) {
         });
       });
     <?php endif; ?>
+    
+    // Mobile sidebar toggle function
+    function toggleSidebar() {
+      document.querySelector('.sidebar').classList.toggle('show');
+    }
   </script>
 </body>
 </html>

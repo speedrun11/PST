@@ -2,7 +2,6 @@
 session_start();
 include('config/config.php');
 include('config/checklogin.php');
-include('config/activity_logger.php');
 check_login();
 require_once('partials/_head.php');
 
@@ -32,10 +31,10 @@ $supplier = $result->fetch_object();
 
 // Handle form submission
 if (isset($_POST['update_supplier'])) {
-    $name = $_POST['name'];
-    $phone = $_POST['phone'];
-    $email = $_POST['email'];
-    $address = $_POST['address'];
+    $name = trim($_POST['name']);
+    $phone = trim($_POST['phone']);
+    $email = trim($_POST['email']);
+    $address = trim($_POST['address']);
 
     // Validate inputs
     if (empty($name) || empty($phone)) {
@@ -44,37 +43,45 @@ if (isset($_POST['update_supplier'])) {
         exit;
     }
 
-    // Update supplier
-    $query = "UPDATE rpos_suppliers SET 
-              supplier_name = ?, 
-              supplier_phone = ?, 
-              supplier_email = ?, 
-              supplier_address = ? 
-              WHERE supplier_id = ?";
-    $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('ssssi', $name, $phone, $email, $address, $supplier_id);
+    // Start transaction
+    $mysqli->begin_transaction();
 
-    if ($stmt->execute()) {
-        // Log the activity
-        log_supplier_activity(
-            $mysqli,
-            'Supplier Update',
-            $_SESSION['staff_id'],
-            "Updated supplier: $name (ID: $supplier_id)",
-            'SUP-UPD-' . uniqid()
-        );
-        
+    try {
+        // Update supplier
+        $query = "UPDATE rpos_suppliers SET 
+                  supplier_name = ?, 
+                  supplier_phone = ?, 
+                  supplier_email = ?, 
+                  supplier_address = ? 
+                  WHERE supplier_id = ?";
+        $stmt = $mysqli->prepare($query);
+        $stmt->bind_param('ssssi', $name, $phone, $email, $address, $supplier_id);
+
+        if (!$stmt->execute()) {
+            throw new Exception("Failed to update supplier: " . $stmt->error);
+        }
+
+        $mysqli->commit();
         $_SESSION['success'] = "Supplier updated successfully";
         header("Location: suppliers.php");
         exit;
-    } else {
-        $_SESSION['error'] = "Failed to update supplier: " . $mysqli->error;
+    } catch (Exception $e) {
+        $mysqli->rollback();
+        $_SESSION['error'] = $e->getMessage();
         header("Location: update_supplier.php?update=" . $supplier_id);
         exit;
     }
 }
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Update Supplier - Inventory Management</title>
+  <?php require_once('partials/_head.php'); ?>
+</head>
 <body>
   <!-- Sidenav -->
   <?php require_once('partials/_sidebar.php'); ?>
