@@ -309,6 +309,9 @@
                 <a href="PSTsystem/customer" class="animate-fade-in delay-4">
                     <i class="fas fa-utensils logo-icon"></i> Customer Feedback
                 </a>
+                <a href="PSTsystem/kds" class="animate-fade-in delay-4">
+                    <i class="fas fa-bell-concierge logo-icon"></i> KDS Login
+                </a>
             </div>
         </div>
     </div>

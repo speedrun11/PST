@@ -299,6 +299,29 @@ require_once('partials/_analytics.php');
                     <div class="col">
                       <h5 class="card-title text-uppercase text-muted mb-0">Total Products</h5>
                       <span class="h2 font-weight-bold mb-0"><?php echo $products; ?></span>
+                      <?php 
+                        // Compute products change since last month
+                        $current_month = (int)date('m');
+                        $current_year = (int)date('Y');
+                        $prev_month = $current_month - 1; $prev_year = $current_year;
+                        if ($prev_month < 1) { $prev_month = 12; $prev_year -= 1; }
+                        $q_now = $mysqli->prepare("SELECT COUNT(*) FROM rpos_products WHERE YEAR(created_at)=? AND MONTH(created_at)=?");
+                        $q_prev = $mysqli->prepare("SELECT COUNT(*) FROM rpos_products WHERE YEAR(created_at)=? AND MONTH(created_at)=?");
+                        $cnt_now = 0; $cnt_prev = 0; $pct = 0;
+                        if ($q_now && $q_prev) {
+                          $q_now->bind_param('ii', $current_year, $current_month); $q_now->execute(); $q_now->bind_result($cnt_now); $q_now->fetch(); $q_now->close();
+                          $q_prev->bind_param('ii', $prev_year, $prev_month); $q_prev->execute(); $q_prev->bind_result($cnt_prev); $q_prev->fetch(); $q_prev->close();
+                          if ($cnt_prev > 0) { $pct = round((($cnt_now - $cnt_prev) / $cnt_prev) * 100, 1); }
+                        }
+                        if ($pct !== 0) {
+                      ?>
+                      <p class="mt-3 mb-0 text-muted text-sm">
+                        <span class="<?php echo ($pct >= 0) ? 'text-success' : 'text-danger'; ?> mr-2">
+                          <i class="fa <?php echo ($pct >= 0) ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i> <?php echo ($pct >= 0 ? $pct : -$pct); ?>%
+                        </span>
+                        <span class="text-nowrap">Since last month</span>
+                      </p>
+                      <?php } ?>
                     </div>
                     <div class="col-auto">
                       <div class="icon icon-shape bg-primary text-white rounded-circle shadow">
@@ -321,10 +344,18 @@ require_once('partials/_analytics.php');
                         $query = "SELECT COUNT(*) FROM rpos_products WHERE prod_quantity <= prod_threshold";
                         $stmt = $mysqli->prepare($query);
                         $stmt->execute();
-                        $stmt->bind_result($low_stock);
+                        $stmt->bind_result($low_stock_products);
                         $stmt->fetch();
                         $stmt->close();
-                        echo $low_stock;
+                        
+                        $query_ingredients = "SELECT COUNT(*) FROM rpos_ingredients WHERE ingredient_quantity <= ingredient_threshold";
+                        $stmt_ingredients = $mysqli->prepare($query_ingredients);
+                        $stmt_ingredients->execute();
+                        $stmt_ingredients->bind_result($low_stock_ingredients);
+                        $stmt_ingredients->fetch();
+                        $stmt_ingredients->close();
+                        
+                        echo $low_stock_products + $low_stock_ingredients;
                         ?>
                       </span>
                     </div>
@@ -349,10 +380,18 @@ require_once('partials/_analytics.php');
                         $query = "SELECT COUNT(*) FROM rpos_products WHERE prod_quantity <= (prod_threshold * 0.5)";
                         $stmt = $mysqli->prepare($query);
                         $stmt->execute();
-                        $stmt->bind_result($critical_stock);
+                        $stmt->bind_result($critical_stock_products);
                         $stmt->fetch();
                         $stmt->close();
-                        echo $critical_stock;
+                        
+                        $query_ingredients = "SELECT COUNT(*) FROM rpos_ingredients WHERE ingredient_quantity <= (ingredient_threshold * 0.5)";
+                        $stmt_ingredients = $mysqli->prepare($query_ingredients);
+                        $stmt_ingredients->execute();
+                        $stmt_ingredients->bind_result($critical_stock_ingredients);
+                        $stmt_ingredients->fetch();
+                        $stmt_ingredients->close();
+                        
+                        echo $critical_stock_products + $critical_stock_ingredients;
                         ?>
                       </span>
                     </div>
@@ -397,6 +436,53 @@ require_once('partials/_analytics.php');
               </div>
           </div>
 
+            <div class="col-xl-3 col-lg-6">
+              <div class="card card-stats mb-4 mb-xl-0">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col">
+                      <h5 class="card-title text-uppercase text-muted mb-0">Total Ingredients</h5>
+                      <span class="h2 font-weight-bold mb-0">
+                        <?php 
+                        $query = "SELECT COUNT(*) FROM rpos_ingredients";
+                        $stmt = $mysqli->prepare($query);
+                        $stmt->execute();
+                        $stmt->bind_result($ingredients_count);
+                        $stmt->fetch();
+                        $stmt->close();
+                        echo $ingredients_count;
+                        ?>
+                      </span>
+                      <?php 
+                        // Compute ingredients change since last month
+                        $q_now = $mysqli->prepare("SELECT COUNT(*) FROM rpos_ingredients WHERE YEAR(created_at)=? AND MONTH(created_at)=?");
+                        $q_prev = $mysqli->prepare("SELECT COUNT(*) FROM rpos_ingredients WHERE YEAR(created_at)=? AND MONTH(created_at)=?");
+                        $cnt_now = 0; $cnt_prev = 0; $pct = 0;
+                        if ($q_now && $q_prev) {
+                          $q_now->bind_param('ii', $current_year, $current_month); $q_now->execute(); $q_now->bind_result($cnt_now); $q_now->fetch(); $q_now->close();
+                          $q_prev->bind_param('ii', $prev_year, $prev_month); $q_prev->execute(); $q_prev->bind_result($cnt_prev); $q_prev->fetch(); $q_prev->close();
+                          if ($cnt_prev > 0) { $pct = round((($cnt_now - $cnt_prev) / $cnt_prev) * 100, 1); }
+                        }
+                        if ($pct !== 0) {
+                      ?>
+                      <p class="mt-3 mb-0 text-muted text-sm">
+                        <span class="<?php echo ($pct >= 0) ? 'text-success' : 'text-danger'; ?> mr-2">
+                          <i class="fa <?php echo ($pct >= 0) ? 'fa-arrow-up' : 'fa-arrow-down'; ?>"></i> <?php echo ($pct >= 0 ? $pct : -$pct); ?>%
+                        </span>
+                        <span class="text-nowrap">Since last month</span>
+                      </p>
+                      <?php } ?>
+                    </div>
+                    <div class="col-auto">
+                      <div class="icon icon-shape bg-success text-white rounded-circle shadow">
+                        <i class="fas fa-seedling"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <div class="col-xl-3 col-lg-6">
               <div class="card card-stats mb-4 mb-xl-0">
                 <div class="card-body">
@@ -449,8 +535,8 @@ require_once('partials/_analytics.php');
               <table class="table align-items-center table-flush">
                 <thead class="thead-dark">
                   <tr>
-                    <th scope="col">Product</th>
-                    <th scope="col">Category</th>
+                    <th scope="col">Item</th>
+                    <th scope="col">Category/Unit</th>
                     <th scope="col">Current Stock</th>
                     <th scope="col">Threshold</th>
                     <th scope="col">Status</th>
@@ -459,14 +545,15 @@ require_once('partials/_analytics.php');
                 </thead>
                 <tbody>
                   <?php
-                  $ret = "SELECT * FROM rpos_products WHERE prod_quantity <= prod_threshold ORDER BY (prod_quantity/prod_threshold) ASC LIMIT 5";
+                  // Get low stock products
+                  $ret = "SELECT * FROM rpos_products WHERE prod_quantity <= prod_threshold ORDER BY (prod_quantity/prod_threshold) ASC LIMIT 3";
                   $stmt = $mysqli->prepare($ret);
                   $stmt->execute();
                   $res = $stmt->get_result();
                   while ($product = $res->fetch_object()) {
                     $status_class = '';
                     $status_text = '';
-                    $percentage = ($product->prod_quantity / $product->prod_threshold) * 100;
+                    $percentage = ($product->prod_threshold > 0) ? (($product->prod_quantity / $product->prod_threshold) * 100) : 100;
                     
                     if ($percentage <= 25) {
                       $status_class = 'critical-stock';
@@ -477,12 +564,54 @@ require_once('partials/_analytics.php');
                     }
                   ?>
                     <tr>
-                      <th scope="row"><?php echo $product->prod_name; ?></th>
-                      <td><?php echo $product->prod_category; ?></td>
+                      <th scope="row"><?php echo htmlspecialchars($product->prod_name) . ' (Product)'; ?></th>
+                      <td><?php echo htmlspecialchars($product->prod_category); ?></td>
                       <td><?php echo $product->prod_quantity; ?></td>
-                      <td><?php echo $product->prod_threshold; ?></td>
-                      <td class="<?php echo $status_class; ?>"><?php echo $status_text; ?></td>
-                      <td><?php echo date('M d, Y', strtotime($product->last_restocked)); ?></td>
+                      <td><?php echo (int)$product->prod_threshold; ?></td>
+                      <td class="<?php echo $status_class; ?>">
+                        <?php if ($status_text === 'Critical'): ?>
+                          <i class="fas fa-exclamation-circle mr-1"></i>
+                        <?php else: ?>
+                          <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <?php endif; ?>
+                        <?php echo $status_text; ?>
+                      </td>
+                      <td><?php echo $product->last_restocked ? date('M d, Y', strtotime($product->last_restocked)) : 'Never'; ?></td>
+                    </tr>
+                  <?php } 
+                  
+                  // Get low stock ingredients
+                  $ret_ingredients = "SELECT * FROM rpos_ingredients WHERE ingredient_quantity <= ingredient_threshold ORDER BY (ingredient_quantity/ingredient_threshold) ASC LIMIT 2";
+                  $stmt_ingredients = $mysqli->prepare($ret_ingredients);
+                  $stmt_ingredients->execute();
+                  $res_ingredients = $stmt_ingredients->get_result();
+                  while ($ingredient = $res_ingredients->fetch_object()) {
+                    $status_class = '';
+                    $status_text = '';
+                    $percentage = ($ingredient->ingredient_quantity / $ingredient->ingredient_threshold) * 100;
+                    
+                    if ($percentage <= 25) {
+                      $status_class = 'critical-stock';
+                      $status_text = 'Critical';
+                    } else {
+                      $status_class = 'low-stock';
+                      $status_text = 'Low';
+                    }
+                  ?>
+                    <tr>
+                      <th scope="row"><?php echo $ingredient->ingredient_name . ' (Ingredient)'; ?></th>
+                      <td><?php echo $ingredient->ingredient_unit; ?></td>
+                      <td><?php echo $ingredient->ingredient_quantity; ?></td>
+                      <td><?php echo $ingredient->ingredient_threshold; ?></td>
+                      <td class="<?php echo $status_class; ?>">
+                        <?php if ($status_text === 'Critical'): ?>
+                          <i class="fas fa-exclamation-circle mr-1"></i>
+                        <?php else: ?>
+                          <i class="fas fa-exclamation-triangle mr-1"></i>
+                        <?php endif; ?>
+                        <?php echo $status_text; ?>
+                      </td>
+                      <td><?php echo $ingredient->last_restocked ? date('M d, Y', strtotime($ingredient->last_restocked)) : 'Never'; ?></td>
                     </tr>
                   <?php } ?>
                 </tbody>
@@ -502,7 +631,8 @@ require_once('partials/_analytics.php');
                   <h3 class="mb-0">Inventory Forecast</h3>
                 </div>
                 <div class="col text-right">
-                  <a href="forecast_reports.php" class="btn btn-sm btn-primary">View Details</a>
+                  <a href="advanced_forecast_reports.php" class="btn btn-sm btn-primary">Advanced Forecasting</a>
+                  <a href="forecast_reports.php" class="btn btn-sm btn-secondary ml-2">Basic Reports</a>
                 </div>
               </div>
             </div>
@@ -512,17 +642,57 @@ require_once('partials/_analytics.php');
               </div>
               <ul class="list-group list-group-flush">
                 <?php
-                // Sample forecast data - in a real system, this would come from a forecasting algorithm
-                $forecast_items = array(
-                  array("name" => "Chicken Pastil", "days_left" => 3, "urgency" => "high"),
-                  array("name" => "Rice", "days_left" => 5, "urgency" => "medium"),
-                  array("name" => "Banana Leaves", "days_left" => 7, "urgency" => "low")
-                );
+                // Fetch all products
+                $ret = "SELECT * FROM rpos_products ORDER BY prod_name ASC";
+                $stmt = $mysqli->prepare($ret);
+                $stmt->execute();
+                $res = $stmt->get_result();
+                $forecast_items = array();
+                while ($row = $res->fetch_assoc()) {
+                  $current_stock = (int)$row['prod_quantity'];
+                  $daily_usage = max(1, (int)($row['prod_threshold'] / 7)); // fallback: threshold/7 days
+                  $forecast_days = $daily_usage > 0 ? floor($current_stock / $daily_usage) : 0;
+                  $urgency = 'low';
+                  if ($forecast_days <= 3) {
+                    $urgency = 'high';
+                  } elseif ($forecast_days <= 7) {
+                    $urgency = 'medium';
+                  }
+                  $forecast_items[] = array(
+                    'name' => $row['prod_name'] . ' (Product)',
+                    'days_left' => $forecast_days,
+                    'urgency' => $urgency
+                  );
+                }
                 
-                foreach ($forecast_items as $item) {
+                // Fetch all ingredients
+                $ret_ingredients = "SELECT * FROM rpos_ingredients ORDER BY ingredient_name ASC";
+                $stmt_ingredients = $mysqli->prepare($ret_ingredients);
+                $stmt_ingredients->execute();
+                $res_ingredients = $stmt_ingredients->get_result();
+                while ($row_ingredients = $res_ingredients->fetch_assoc()) {
+                  $current_stock_ingredients = (int)$row_ingredients['ingredient_quantity'];
+                  $daily_usage_ingredients = max(1, (int)($row_ingredients['ingredient_threshold'] / 7)); // fallback: threshold/7 days
+                  $forecast_days_ingredients = $daily_usage_ingredients > 0 ? floor($current_stock_ingredients / $daily_usage_ingredients) : 0;
+                  $urgency_ingredients = 'low';
+                  if ($forecast_days_ingredients <= 3) {
+                    $urgency_ingredients = 'high';
+                  } elseif ($forecast_days_ingredients <= 7) {
+                    $urgency_ingredients = 'medium';
+                  }
+                  $forecast_items[] = array(
+                    'name' => $row_ingredients['ingredient_name'] . ' (Ingredient)',
+                    'days_left' => $forecast_days_ingredients,
+                    'urgency' => $urgency_ingredients
+                  );
+                }
+                
+                // Sort by days_left ascending
+                usort($forecast_items, function($a, $b) { return $a['days_left'] - $b['days_left']; });
+                // Show top 5 urgent items
+                foreach (array_slice($forecast_items, 0, 5) as $item) {
                   $icon = '';
                   $text_class = '';
-                  
                   if ($item['urgency'] == 'high') {
                     $icon = 'fas fa-exclamation-circle';
                     $text_class = 'critical-stock';
@@ -533,10 +703,9 @@ require_once('partials/_analytics.php');
                     $icon = 'fas fa-info-circle';
                     $text_class = 'text-success';
                   }
-                  
                   echo '<li class="list-group-item bg-transparent border-light">';
                   echo '<i class="' . $icon . ' ' . $text_class . ' mr-2"></i>';
-                  echo '<strong>' . $item['name'] . '</strong> - Estimated stock lasts ' . $item['days_left'] . ' more days';
+                  echo '<strong>' . htmlspecialchars($item['name']) . '</strong> - Estimated stock lasts ' . $item['days_left'] . ' more days';
                   echo '</li>';
                 }
                 ?>

@@ -5,52 +5,7 @@ include('config/checklogin.php');
 check_login();
 require_once('partials/_head.php');
 
-// Pagination configuration
-$results_per_page = 10;
-
-// Get current page from URL
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$page = max(1, $page); // Ensure page is at least 1
-
-// Calculate starting limit
-$start_from = ($page-1) * $results_per_page;
-
-// Build filter query
-$filter = '';
-$params = [];
-$types = '';
-
-if(isset($_GET['filter_type']) && !empty($_GET['filter_type'])) {
-    $filter = " WHERE l.activity_type = ?";
-    $params[] = $_GET['filter_type'];
-    $types .= 's';
-}
-
-if(isset($_GET['filter_product']) && !empty($_GET['filter_product'])) {
-    if(empty($filter)) {
-        $filter = " WHERE l.product_id = ?";
-    } else {
-        $filter .= " AND l.product_id = ?";
-    }
-    $params[] = $_GET['filter_product'];
-    $types .= 's';
-}
-
-// Get total number of logs
-$count_query = "SELECT COUNT(*) AS total FROM rpos_inventory_logs l $filter";
-$count_stmt = $mysqli->prepare($count_query);
-if(!empty($params)) {
-    $count_stmt->bind_param($types, ...$params);
-}
-$count_stmt->execute();
-$count_result = $count_stmt->get_result();
-$count_row = $count_result->fetch_assoc();
-$total_logs = $count_row['total'];
-
-// Calculate total pages
-$total_pages = ceil($total_logs / $results_per_page);
-
-// Get logs with pagination
+// Get latest 20 product activity logs (no filters, no pagination)
 $ret = "SELECT 
             l.log_id,
             l.product_id,
@@ -68,34 +23,11 @@ $ret = "SELECT
         FROM rpos_inventory_logs l
         LEFT JOIN rpos_products p ON l.product_id = p.prod_id
         LEFT JOIN rpos_staff s ON l.staff_id = s.staff_id
-        $filter 
         ORDER BY l.activity_date DESC 
-        LIMIT ?, ?";
+        LIMIT 20";
 $stmt = $mysqli->prepare($ret);
-
-// Prepare parameters for pagination
-$pagination_params = [];
-$pagination_types = '';
-
-if(!empty($params)) {
-    $pagination_params = array_merge($params, [$start_from, $results_per_page]);
-    $pagination_types = $types . 'ii';
-} else {
-    $pagination_params = [$start_from, $results_per_page];
-    $pagination_types = 'ii';
-}
-
-$stmt->bind_param($pagination_types, ...$pagination_params);
 $stmt->execute();
-$res = $stmt->get_result();
-
-// Get all products for filter dropdown
-$products = array();
-$product_query = "SELECT prod_id, prod_name FROM rpos_products ORDER BY prod_name ASC";
-$product_result = $mysqli->query($product_query);
-while ($product = $product_result->fetch_object()) {
-    $products[] = $product;
-}
+$prod_res = $stmt->get_result();
 ?>
 
 <body>
@@ -137,71 +69,17 @@ while ($product = $product_result->fetch_object()) {
     <div class="container-fluid mt--7">
       <div class="row">
         <div class="col">
+          <!-- Inventory Activities (Product Logs) -->
           <div class="card shadow">
             <div class="card-header border-0">
               <div class="row align-items-center">
                 <div class="col-8">
-                  <h3 class="mb-0 text-gold">Inventory Activities</h3>
-                </div>
-                <div class="col-4 text-right">
-                  <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#filterModal">
-                    <i class="fas fa-filter"></i> Filter
-                  </button>
+                  <h3 class="mb-0 text-gold">Product Activities</h3>
                 </div>
               </div>
             </div>
-
-            <!-- Filter Modal -->
-            <div class="modal fade" id="filterModal" tabindex="-1" role="dialog" aria-labelledby="filterModalLabel" aria-hidden="true">
-              <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content" style="background: rgba(26, 26, 46, 0.95); border: 1px solid rgba(192, 160, 98, 0.3);">
-                  <div class="modal-header" style="border-bottom: 1px solid rgba(192, 160, 98, 0.3);">
-                    <h5 class="modal-title text-gold" id="filterModalLabel">Filter Activity Logs</h5>
-                    <button type="button" class="close text-gold" data-dismiss="modal" aria-label="Close">
-                      <span aria-hidden="true">&times;</span>
-                    </button>
-                  </div>
-                  <div class="modal-body">
-                    <form method="GET" action="activity_logs.php">
-                      <div class="form-group">
-                        <label class="form-control-label text-gold" for="filter_type">Activity Type</label>
-                        <select class="form-control bg-transparent text-light border-light" id="filter_type" name="filter_type">
-                          <option value="">All Types</option>
-                          <option value="Add" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Add') echo 'selected'; ?>>Add</option>
-                          <option value="Update" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Update') echo 'selected'; ?>>Update</option>
-                          <option value="Restock" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Restock') echo 'selected'; ?>>Restock</option>
-                          <option value="Sale" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Sale') echo 'selected'; ?>>Sale</option>
-                          <option value="Adjustment" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Adjustment') echo 'selected'; ?>>Adjustment</option>
-                          <option value="Waste" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Waste') echo 'selected'; ?>>Waste</option>
-                          <option value="Transfer" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Transfer') echo 'selected'; ?>>Transfer</option>
-                          <option value="Delete" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Delete') echo 'selected'; ?>>Delete</option>
-                          <option value="Supplier Add" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Supplier Add') echo 'selected'; ?>>Supplier Add</option>
-                          <option value="Supplier Update" <?php if(isset($_GET['filter_type']) && $_GET['filter_type'] == 'Supplier Update') echo 'selected'; ?>>Supplier Update</option>
-                        </select>
-                      </div>
-                      <div class="form-group">
-                        <label class="form-control-label text-gold" for="filter_product">Product</label>
-                        <select class="form-control bg-transparent text-light border-light" id="filter_product" name="filter_product">
-                          <option value="">All Products</option>
-                          <?php foreach($products as $product): ?>
-                            <option value="<?php echo $product->prod_id; ?>" <?php if(isset($_GET['filter_product']) && $_GET['filter_product'] == $product->prod_id) echo 'selected'; ?>>
-                              <?php echo htmlspecialchars($product->prod_name); ?>
-                            </option>
-                          <?php endforeach; ?>
-                        </select>
-                      </div>
-                      <div class="text-center">
-                        <button type="submit" class="btn btn-primary">Apply Filters</button>
-                        <a href="activity_logs.php" class="btn btn-secondary">Reset</a>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <div class="table-responsive">
-              <?php if($res->num_rows > 0): ?>
+              <?php if($prod_res && $prod_res->num_rows > 0): ?>
                 <table class="table align-items-center table-flush">
                   <thead class="thead-dark">
                     <tr>
@@ -217,11 +95,9 @@ while ($product = $product_result->fetch_object()) {
                     </tr>
                   </thead>
                   <tbody>
-                    <?php while ($log = $res->fetch_object()): ?>
+                    <?php while ($log = $prod_res->fetch_object()): ?>
                       <tr>
-                          <td class="text-white">
-                              <?php echo date('M d, Y h:i A', strtotime($log->activity_date)); ?>
-                          </td>
+                        <td class="text-white"><?php echo date('M d, Y h:i A', strtotime($log->activity_date)); ?></td>
                         <td>
                           <?php 
                             $badge_class = '';
@@ -241,9 +117,7 @@ while ($product = $product_result->fetch_object()) {
                               default: $badge_class = 'badge-info';
                             }
                           ?>
-                          <span class="badge <?php echo $badge_class; ?>">
-                            <?php echo htmlspecialchars($log->activity_type); ?>
-                          </span>
+                          <span class="badge <?php echo $badge_class; ?>"><?php echo htmlspecialchars($log->activity_type); ?></span>
                         </td>
                         <td class="text-white">
                           <?php if($log->prod_name): ?>
@@ -253,95 +127,132 @@ while ($product = $product_result->fetch_object()) {
                             <span class="text-muted">Product deleted</span>
                           <?php endif; ?>
                         </td>
+                        <td class="text-white"><?php echo $log->staff_name ? htmlspecialchars($log->staff_name) : '<span class="text-muted">Staff deleted</span>'; ?></td>
+                        <td class="<?php echo ($log->quantity_change > 0) ? 'text-success' : 'text-danger'; ?>"><?php echo ($log->quantity_change > 0 ? '+' : '') . htmlspecialchars($log->quantity_change); ?></td>
+                        <td class="text-white"><?php echo htmlspecialchars($log->previous_quantity); ?></td>
+                        <td class="text-white"><?php echo htmlspecialchars($log->new_quantity); ?></td>
+                        <td class="text-white"><small><?php echo htmlspecialchars($log->reference_code); ?></small></td>
+                        <td class="text-white"><?php echo htmlspecialchars($log->notes); ?></td>
+                      </tr>
+                    <?php endwhile; ?>
+                  </tbody>
+                </table>
+              <?php else: ?>
+                <div class="alert alert-warning text-center">No product activity logs found.</div>
+              <?php endif; ?>
+            </div>
+          </div>
+
+          <!-- Ingredient Activities -->
+          <div class="card shadow mt-4">
+            <div class="card-header border-0">
+              <div class="row align-items-center">
+                <div class="col-8">
+                  <h3 class="mb-0 text-gold">Ingredient Activities</h3>
+                </div>
+              </div>
+            </div>
+            <?php
+              // Load recent ingredient logs (apply type filter if present)
+              $ing_filter = '';
+              $ing_params = [];
+              $ing_types = '';
+              if(isset($_GET['filter_type']) && !empty($_GET['filter_type'])) {
+                $ing_filter = ' WHERE il.activity_type = ?';
+                $ing_params[] = $_GET['filter_type'];
+                $ing_types .= 's';
+              }
+              $ing_sql = "SELECT 
+                            il.log_id,
+                            il.activity_type,
+                            il.quantity_change,
+                            il.previous_quantity,
+                            il.new_quantity,
+                            il.staff_id,
+                            il.activity_date,
+                            il.notes,
+                            il.reference_code,
+                            i.ingredient_name,
+                            i.ingredient_unit,
+                            sup.supplier_name,
+                            st.staff_name
+                          FROM rpos_ingredient_logs il
+                          LEFT JOIN rpos_ingredients i ON il.ingredient_id = i.ingredient_id
+                          LEFT JOIN rpos_suppliers sup ON i.supplier_id = sup.supplier_id
+                          LEFT JOIN rpos_staff st ON il.staff_id = st.staff_id
+                          $ing_filter
+                          ORDER BY il.activity_date DESC
+                          LIMIT 20";
+              $ing_stmt = $mysqli->prepare($ing_sql);
+              if ($ing_stmt) {
+                if(!empty($ing_params)) {
+                  $ing_stmt->bind_param($ing_types, ...$ing_params);
+                }
+                $ing_stmt->execute();
+                $ing_res = $ing_stmt->get_result();
+              } else {
+                $ing_res = false;
+              }
+            ?>
+            <div class="table-responsive">
+              <?php if($ing_res && $ing_res->num_rows > 0): ?>
+                <table class="table align-items-center table-flush">
+                  <thead class="thead-dark">
+                    <tr>
+                      <th scope="col" class="text-gold">Date & Time</th>
+                      <th scope="col" class="text-gold">Activity</th>
+                      <th scope="col" class="text-gold">Ingredient</th>
+                      <th scope="col" class="text-gold">Supplier</th>
+                      <th scope="col" class="text-gold">Staff</th>
+                      <th scope="col" class="text-gold">Quantity Change</th>
+                      <th scope="col" class="text-gold">Stock Before</th>
+                      <th scope="col" class="text-gold">Stock After</th>
+                      <th scope="col" class="text-gold">Reference</th>
+                      <th scope="col" class="text-gold">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php while ($ilog = $ing_res->fetch_object()): ?>
+                      <tr>
+                        <td class="text-white"><?php echo date('M d, Y h:i A', strtotime($ilog->activity_date)); ?></td>
+                        <td>
+                          <?php 
+                            $ibadge = '';
+                            switch($ilog->activity_type) {
+                              case 'Restock': $ibadge = 'badge-warning'; break;
+                              case 'Waste': $ibadge = 'badge-dark'; break;
+                              case 'Adjustment': $ibadge = 'badge-secondary'; break;
+                              case 'Transfer': $ibadge = 'badge-light text-dark'; break;
+                              case 'Add': $ibadge = 'badge-success'; break;
+                              case 'Update': $ibadge = 'badge-primary'; break;
+                              default: $ibadge = 'badge-info';
+                            }
+                          ?>
+                          <span class="badge <?php echo $ibadge; ?>"><?php echo htmlspecialchars($ilog->activity_type); ?></span>
+                        </td>
                         <td class="text-white">
-                          <?php echo $log->staff_name ? htmlspecialchars($log->staff_name) : '<span class="text-muted">Staff deleted</span>'; ?>
+                          <?php echo $ilog->ingredient_name ? htmlspecialchars($ilog->ingredient_name) : '<span class="text-muted">Ingredient deleted</span>'; ?>
+                          <?php if($ilog->ingredient_unit): ?>
+                            <small class="text-muted d-block"><?php echo htmlspecialchars($ilog->ingredient_unit); ?></small>
+                          <?php endif; ?>
                         </td>
-                        <td class="<?php echo ($log->quantity_change > 0) ? 'text-success' : 'text-danger'; ?>">
-                          <?php echo ($log->quantity_change > 0) ? '+' : ''; ?><?php echo htmlspecialchars($log->quantity_change); ?>
-                        </td>
-                        <td class="text-white">
-                          <?php echo htmlspecialchars($log->previous_quantity); ?>
-                        </td>
-                        <td class="text-white">
-                          <?php echo htmlspecialchars($log->new_quantity); ?>
-                        </td>
-                        <td class="text-white">
-                          <small><?php echo htmlspecialchars($log->reference_code); ?></small>
-                        </td>
-                        <td class="text-white">
-                          <?php echo htmlspecialchars($log->notes); ?>
-                        </td>
+                        <td class="text-white"><?php echo $ilog->supplier_name ? htmlspecialchars($ilog->supplier_name) : '—'; ?></td>
+                        <td class="text-white"><?php echo $ilog->staff_name ? htmlspecialchars($ilog->staff_name) : '<span class="text-muted">Staff deleted</span>'; ?></td>
+                        <td class="<?php echo ($ilog->quantity_change > 0) ? 'text-success' : 'text-danger'; ?>"><?php echo ($ilog->quantity_change > 0 ? '+' : '') . htmlspecialchars($ilog->quantity_change); ?></td>
+                        <td class="text-white"><?php echo htmlspecialchars($ilog->previous_quantity); ?></td>
+                        <td class="text-white"><?php echo htmlspecialchars($ilog->new_quantity); ?></td>
+                        <td class="text-white"><small><?php echo htmlspecialchars($ilog->reference_code); ?></small></td>
+                        <td class="text-white"><?php echo htmlspecialchars($ilog->notes); ?></td>
                       </tr>
                     <?php endwhile; ?>
                   </tbody>
                 </table>
               <?php else: ?>
                 <div class="alert alert-warning text-center">
-                  No activity logs found.
+                  No ingredient activity logs found.
                 </div>
               <?php endif; ?>
             </div>
-
-            <!-- Pagination -->
-            <?php if($total_pages > 1): ?>
-              <div class="card-footer py-4" style="background: rgba(26, 26, 46, 0.9); border-top: 1px solid rgba(192, 160, 98, 0.2);">
-                <nav aria-label="...">
-                  <ul class="pagination justify-content-end mb-0">
-                    <?php if($page > 1): ?>
-                      <li class="page-item">
-                        <a class="page-link text-gold" href="activity_logs.php?page=<?php echo $page-1; ?><?php 
-                          if(isset($_GET['filter_type'])) echo '&filter_type='.urlencode($_GET['filter_type']); 
-                          if(isset($_GET['filter_product'])) echo '&filter_product='.urlencode($_GET['filter_product']); 
-                        ?>" tabindex="-1">
-                          <i class="fas fa-angle-left"></i>
-                          <span class="sr-only">Previous</span>
-                        </a>
-                      </li>
-                    <?php endif; ?>
-                    
-                    <?php 
-                    // Show page numbers
-                    $visible_pages = 3;
-                    $start_page = max(1, $page - $visible_pages);
-                    $end_page = min($total_pages, $page + $visible_pages);
-                    
-                    if($start_page > 1) {
-                      echo '<li class="page-item"><a class="page-link text-gold" href="activity_logs.php?page=1'.(isset($_GET['filter_type']) ? '&filter_type='.urlencode($_GET['filter_type']) : '').(isset($_GET['filter_product']) ? '&filter_product='.urlencode($_GET['filter_product']) : '').'">1</a></li>';
-                      if($start_page > 2) {
-                        echo '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
-                      }
-                    }
-                    
-                    for($i = $start_page; $i <= $end_page; $i++) {
-                      $active = ($i == $page) ? 'active' : '';
-                      echo '<li class="page-item '.$active.'">';
-                      echo '<a class="page-link text-gold" href="activity_logs.php?page='.$i.(isset($_GET['filter_type']) ? '&filter_type='.urlencode($_GET['filter_type']) : '').(isset($_GET['filter_product']) ? '&filter_product='.urlencode($_GET['filter_product']) : '').'">'.$i.'</a>';
-                      echo '</li>';
-                    }
-                    
-                    if($end_page < $total_pages) {
-                      if($end_page < $total_pages - 1) {
-                        echo '<li class="page-item disabled"><a class="page-link" href="#">...</a></li>';
-                      }
-                      echo '<li class="page-item"><a class="page-link text-gold" href="activity_logs.php?page='.$total_pages.(isset($_GET['filter_type']) ? '&filter_type='.urlencode($_GET['filter_type']) : '').(isset($_GET['filter_product']) ? '&filter_product='.urlencode($_GET['filter_product']) : '').'">'.$total_pages.'</a></li>';
-                    }
-                    ?>
-                    
-                    <?php if($page < $total_pages): ?>
-                      <li class="page-item">
-                        <a class="page-link text-gold" href="activity_logs.php?page=<?php echo $page+1; ?><?php 
-                          if(isset($_GET['filter_type'])) echo '&filter_type='.urlencode($_GET['filter_type']); 
-                          if(isset($_GET['filter_product'])) echo '&filter_product='.urlencode($_GET['filter_product']); 
-                        ?>">
-                          <i class="fas fa-angle-right"></i>
-                          <span class="sr-only">Next</span>
-                        </a>
-                      </li>
-                    <?php endif; ?>
-                  </ul>
-                </nav>
-              </div>
-            <?php endif; ?>
           </div>
         </div>
       </div>

@@ -200,31 +200,33 @@ require_once('partials/_head.php');
                                     <tr>
                                         <th scope="col">Code</th>
                                         <th class="text-success" scope="col">Customer</th>
-                                        <th scope="col">Product</th>
-                                        <th class="text-success" scope="col">Unit Price</th>
-                                        <th scope="col">Qty</th>
-                                        <th class="text-success" scope="col">Total Price</th>
+                                        <th scope="col">Items</th>
+                                        <th class="text-success" scope="col">Total</th>
                                         <th scope="col">Date</th>
                                         <th class="text-success" scope="col">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $ret = "SELECT * FROM  rpos_orders WHERE order_status = 'Paid' ORDER BY `rpos_orders`.`created_at` DESC  ";
+                                    $ret = "SELECT order_code, customer_name,
+                                                    GROUP_CONCAT(CONCAT(prod_name,' x',prod_qty) SEPARATOR ', ') AS items,
+                                                    SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS total_amount,
+                                                    MIN(created_at) AS created_at
+                                             FROM rpos_orders
+                                             WHERE order_status = 'Paid'
+                                             GROUP BY order_code, customer_name
+                                             ORDER BY MIN(created_at) DESC";
                                     $stmt = $mysqli->prepare($ret);
                                     $stmt->execute();
                                     $res = $stmt->get_result();
                                     while ($order = $res->fetch_object()) {
-                                        $total = ($order->prod_price * $order->prod_qty);
 
                                     ?>
                                         <tr>
                                             <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
                                             <td><?php echo $order->customer_name; ?></td>
-                                            <td class="text-success"><?php echo $order->prod_name; ?></td>
-                                            <td>₱ <?php echo $order->prod_price; ?></td>
-                                            <td class="text-success"><?php echo $order->prod_qty; ?></td>
-                                            <td>₱ <?php echo $total; ?></td>
+                                            <td class="text-success"><?php echo htmlspecialchars($order->items); ?></td>
+                                            <td>₱ <?php echo number_format($order->total_amount,2); ?></td>
                                             <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
                                             <td>
                                                 <a target="_blank" href="print_receipt.php?order_code=<?php echo $order->order_code; ?>">

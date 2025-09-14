@@ -9,25 +9,33 @@ if (isset($_POST['make'])) {
   if (empty($_POST["order_code"]) || empty($_POST["customer_name"]) || empty($_GET['prod_price'])) {
     $err = "Blank Values Not Accepted";
   } else {
-    $order_id = $_POST['order_id'];
-    $order_code  = $_POST['order_code'];
-    $customer_id = "CUST-".date('YmdHis'); // Simple timestamp-based ID
-    $customer_name = $_POST['customer_name'];
-    $prod_id  = $_GET['prod_id'];
+    // Redirect to enhanced checkout with single item
+    $prod_id = $_GET['prod_id'];
     $prod_name = $_GET['prod_name'];
     $prod_price = $_GET['prod_price'];
     $prod_qty = $_POST['prod_qty'];
-
-    $postQuery = "INSERT INTO rpos_orders (prod_qty, order_id, order_code, customer_id, customer_name, prod_id, prod_name, prod_price) VALUES(?,?,?,?,?,?,?,?)";
-    $postStmt = $mysqli->prepare($postQuery);
-    $rc = $postStmt->bind_param('ssssssss', $prod_qty, $order_id, $order_code, $customer_id, $customer_name, $prod_id, $prod_name, $prod_price);
-    $postStmt->execute();
+    $customer_name = $_POST['customer_name'];
+    $customer_id = "CUST-".date('YmdHis');
     
-    if ($postStmt) {
-      $success = "Order Submitted" && header("refresh:1; url=payments.php");
-    } else {
-      $err = "Please Try Again Or Try Later";
-    }
+    // Create a single-item cart for the enhanced checkout
+    $single_item_cart = array(
+      array(
+        'id' => $prod_id,
+        'name' => $prod_name,
+        'price' => floatval($prod_price),
+        'quantity' => intval($prod_qty),
+        'img' => 'default.jpg' // Default image, will be updated by checkout
+      )
+    );
+    
+    // Store in session for enhanced checkout
+    $_SESSION['single_item_cart'] = $single_item_cart;
+    $_SESSION['customer_name'] = $customer_name;
+    $_SESSION['customer_id'] = $customer_id;
+    
+    // Redirect to enhanced checkout
+    header("Location: enhanced_checkout.php");
+    exit();
   }
 }
 require_once('partials/_head.php');

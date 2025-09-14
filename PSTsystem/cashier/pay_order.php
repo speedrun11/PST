@@ -17,20 +17,35 @@ if (isset($_POST['pay'])) {
     $pay_method = $_POST['pay_method'];
     $pay_id = $_POST['pay_id'];
     $order_status = $_GET['order_status'];
+    $order_type = $_GET['order_type'] ?? 'dine-in';
 
-    $postQuery = "INSERT INTO rpos_payments (pay_id, pay_code, order_code, customer_id, pay_amt, pay_method) VALUES(?,?,?,?,?,?)";
-    $upQry = "UPDATE rpos_orders SET order_status =? WHERE order_code =?";
+    // Calculate the grand total securely on server side for this order_code
+    $sumQry = "SELECT SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS grand_total FROM rpos_orders WHERE order_code = ?";
+    $sumStmt = $mysqli->prepare($sumQry);
+    $sumStmt->bind_param('s', $order_code);
+    $sumStmt->execute();
+    $sumRes = $sumStmt->get_result();
+    $sumRow = $sumRes->fetch_object();
+    $grand_total = $sumRow ? (float)$sumRow->grand_total : 0.0;
 
+    // Override posted amount with computed grand total for integrity
+    $pay_amt = $grand_total;
+
+    // Insert one payment record for the whole order_code
+    $postQuery = "INSERT INTO rpos_payments (pay_id, pay_code, order_code, customer_id, pay_amt, pay_method, order_type) VALUES(?,?,?,?,?,?,?)";
     $postStmt = $mysqli->prepare($postQuery);
-    $upStmt = $mysqli->prepare($upQry);
-    $rc = $postStmt->bind_param('ssssss', $pay_id, $pay_code, $order_code, $customer_id, $pay_amt, $pay_method);
-    $rc = $upStmt->bind_param('ss', $order_status, $order_code);
+    $postStmt->bind_param('sssssss', $pay_id, $pay_code, $order_code, $customer_id, $pay_amt, $pay_method, $order_type);
 
-    $postStmt->execute();
-    $upStmt->execute();
+    // Mark all rows with this order_code as Paid
+    $upQry = "UPDATE rpos_orders SET order_status = ? WHERE order_code = ?";
+    $upStmt = $mysqli->prepare($upQry);
+    $upStmt->bind_param('ss', $order_status, $order_code);
+
+    $ok1 = $postStmt->execute();
+    $ok2 = $upStmt->execute();
     
-    if ($upStmt && $postStmt) {
-      $success = "Paid" && header("refresh:1; url=receipts.php");
+    if ($ok1 && $ok2) {
+      $success = "Payment processed successfully for " . ucfirst($order_type) . " order!" && header("refresh:1; url=receipts.php");
     } else {
       $err = "Please Try Again Or Try Later";
     }
@@ -179,12 +194,19 @@ require_once('partials/_head.php');
     <?php
     require_once('partials/_topnav.php');
     $order_code = $_GET['order_code'];
-    $ret = "SELECT * FROM  rpos_orders WHERE order_code ='$order_code' ";
+    // Fetch a summary for display
+    $ret = "SELECT customer_name, MIN(order_type) AS order_type, 
+                   SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS grand_total
+            FROM rpos_orders 
+            WHERE order_code = ?
+            GROUP BY customer_name";
     $stmt = $mysqli->prepare($ret);
+    $stmt->bind_param('s', $order_code);
     $stmt->execute();
     $res = $stmt->get_result();
-    while ($order = $res->fetch_object()) {
-        $total = ($order->prod_price * $order->prod_qty);
+    $summary = $res->fetch_object();
+    if ($summary) {
+        $total = (float)$summary->grand_total;
     ?>
     
     <!-- Header -->
@@ -218,14 +240,25 @@ require_once('partials/_head.php');
                 </div>
                 <hr>
                 <div class="form-row">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label>Amount (₱)</label>
-                    <input type="text" name="pay_amt" readonly value="<?php echo $total;?>" class="form-control">
+                    <input type="text" name="pay_amt" readonly value="<?php echo number_format($total,2);?>" class="form-control">
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
+                    <label>Order Type</label>
+                    <div class="order-type-display" style="padding: 10px; background: rgba(26, 26, 46, 0.8); border: 1px solid rgba(192, 160, 98, 0.3); border-radius: 5px; text-align: center;">
+                      <i class="fas fa-<?php echo ($summary->order_type ?? 'dine-in') === 'takeout' ? 'shopping-bag' : 'utensils'; ?>" 
+                         style="color: var(--accent-gold); margin-right: 5px;"></i>
+                      <span style="color: var(--accent-gold); font-weight: 600;">
+                        <?php echo ucfirst($summary->order_type ?? 'dine-in'); ?>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
                     <label>Payment Method</label>
                     <select class="form-control" name="pay_method">
                         <option selected>Cash</option>
+                        <option>GCash</option>
                     </select>
                   </div>
                 </div>

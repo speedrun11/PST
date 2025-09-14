@@ -9,8 +9,8 @@ check_login();
 
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1">
-    <title>Pastil sa Pasig - Receipt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>PST - Point Of Sale</title>
     <!-- Favicon -->
     <link rel="apple-touch-icon" sizes="180x180" href="assets/img/icons/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/img/icons/favicon-32x32.png">
@@ -43,18 +43,19 @@ check_login();
             padding: 20px;
         }
 
-        .main-container {
+        .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
         }
 
-        .receipt-container {
+        .well {
             background: white;
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
             overflow: hidden;
             margin-bottom: 30px;
+            padding: 20px;
         }
 
         .receipt-header {
@@ -63,39 +64,26 @@ check_login();
             padding: 20px;
             text-align: center;
             border-bottom: 2px solid var(--accent-gold);
+            margin-bottom: 20px;
         }
 
-        .receipt-header h1 {
+        .receipt-header h2 {
             margin: 0;
             font-size: 1.8rem;
             font-weight: 600;
+            color: var(--accent-gold);
         }
 
-        .receipt-body {
-            padding: 30px;
+        address {
+            margin-bottom: 20px;
+            font-style: normal;
         }
 
-        .business-info {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            flex-wrap: wrap;
-        }
-
-        .business-address {
-            flex: 1;
-            min-width: 250px;
-        }
-
-        .receipt-meta {
-            flex: 1;
-            text-align: right;
-            min-width: 250px;
-        }
-
-        .table-container {
-            margin: 30px 0;
-            overflow-x: auto;
+        address strong {
+            color: var(--primary-dark);
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            display: block;
         }
 
         .table {
@@ -140,20 +128,7 @@ check_login();
             font-weight: 500;
         }
 
-        .total-row {
-            background-color: #f9f9f9;
-            font-weight: 600;
-        }
-
-        .print-section {
-            text-align: center;
-            margin-top: 30px;
-            padding: 20px;
-            background-color: #f5f7fa;
-            border-radius: var(--border-radius);
-        }
-
-        .btn-print {
+        .btn-success {
             background-color: var(--accent-green);
             border: none;
             color: white;
@@ -165,47 +140,52 @@ check_login();
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 10px;
             box-shadow: 0 4px 12px rgba(74, 107, 87, 0.2);
+            width: 100%;
         }
 
-        .btn-print:hover {
+        .btn-success:hover {
             background-color: #3a5a46;
             transform: translateY(-2px);
             box-shadow: 0 6px 16px rgba(74, 107, 87, 0.3);
         }
 
         @media print {
+            @page {
+                size: auto;
+                margin: 0.5in;
+            }
+            /* Hide any automatic link URLs appended by some print styles */
+            a[href]:after {
+                content: none !important;
+            }
+            /* Hide generic header/footer elements if present */
+            header, footer {
+                display: none !important;
+            }
             body {
                 background-color: white;
                 padding: 0;
             }
 
-            .main-container {
+            .container {
                 padding: 0;
             }
 
-            .receipt-container {
+            .well {
                 box-shadow: none;
                 border-radius: 0;
+                margin: 0;
             }
 
-            .print-section {
+            .btn-success {
                 display: none;
             }
         }
 
         @media (max-width: 768px) {
-            .business-info {
-                flex-direction: column;
-                gap: 20px;
-            }
-
-            .business-address,
-            .receipt-meta {
-                text-align: center;
-            }
-
             .table th,
             .table td {
                 padding: 8px 10px;
@@ -217,81 +197,153 @@ check_login();
 
 <?php
 $order_code = $_GET['order_code'];
-$ret = "SELECT * FROM  rpos_orders WHERE order_code = '$order_code'";
-$stmt = $mysqli->prepare($ret);
-$stmt->execute();
-$res = $stmt->get_result();
-while ($order = $res->fetch_object()) {
-    $total = ($order->prod_price * $order->prod_qty);
+// Fetch group header details and totals
+$sumQry = "SELECT customer_name, MIN(created_at) AS created_at,
+                  MIN(order_type) AS order_type,
+                  SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS grand_total
+           FROM rpos_orders
+           WHERE order_code = ?
+           GROUP BY customer_name";
+$sumStmt = $mysqli->prepare($sumQry);
+$sumStmt->bind_param('s', $order_code);
+$sumStmt->execute();
+$sumRes = $sumStmt->get_result();
+$summary = $sumRes->fetch_object();
+
+// Fetch line items
+$itemsQry = "SELECT prod_name, prod_qty, prod_price, COALESCE(additional_charge,0) AS additional_charge
+             FROM rpos_orders WHERE order_code = ? ORDER BY created_at ASC";
+$itemsStmt = $mysqli->prepare($itemsQry);
+$itemsStmt->bind_param('s', $order_code);
+$itemsStmt->execute();
+$itemsRes = $itemsStmt->get_result();
 ?>
 
 <body>
-    <div class="main-container">
-        <div id="Receipt" class="receipt-container">
-            <div class="receipt-header">
-                <h1>Order Receipt</h1>
-            </div>
-            
-            <div class="receipt-body">
-                <div class="business-info">
-                    <div class="business-address">
-                        <h3 style="color: var(--primary-dark); margin-bottom: 10px;">Pastil sa Pasig - Pagasa</h3>
-                        <p style="margin: 5px 0;">29 Pag-asa Street</p>
-                        <p style="margin: 5px 0;">Pasig City, 1606 Metro Manila</p>
-                        <p style="margin: 5px 0;">+63 997 369 5988</p>
+    <div class="container">
+        <div class="row">
+            <div id="Receipt" class="well col-xs-10 col-sm-10 col-md-6 col-xs-offset-1 col-sm-offset-1 col-md-offset-3">
+                <div class="receipt-header">
+                    <h2>Order Receipt</h2>
+                </div>
+                
+                <div class="row">
+                    <div class="col-xs-6 col-sm-6 col-md-6">
+                        <address>
+                            <strong>Pastil sa Pasig - Pagasa</strong>
+                            <br>
+                            29 Pag-asa Street
+                            <br>
+                            Pasig City, 1606 Metro Manila
+                            <br>
+                            +63 997 369 5988
+                        </address>
                     </div>
-                    
-                    <div class="receipt-meta">
-                        <p style="margin: 5px 0;"><strong>Date:</strong> <?php echo date('d/M/Y g:i A', strtotime($order->created_at)); ?></p>
-                        <p style="margin: 5px 0;"><strong class="text-success">Receipt #:</strong> <?php echo $order->order_code; ?></p>
-                        <p style="margin: 5px 0;"><strong>Customer:</strong> <?php echo $order->customer_name; ?></p>
+                    <div class="col-xs-6 col-sm-6 col-md-6 text-right">
+                        <p>
+                            <em>Date: <?php echo date('d/M/Y g:i', strtotime($summary->created_at)); ?></em>
+                        </p>
+                        <p>
+                            <em class="text-success">Receipt #: <?php echo htmlspecialchars($order_code); ?></em>
+                        </p>
+                        <p>
+                            <em>Customer: <?php echo htmlspecialchars($summary->customer_name); ?></em>
+                        </p>
+                        <p>
+                            <em>Order Type: 
+                                <span style="font-weight:600; color: <?php echo ($summary->order_type==='takeout'?'#c0a062':'#3a5673'); ?>;">
+                                    <?php echo ucfirst($summary->order_type ?? 'dine-in'); ?>
+                                </span>
+                            </em>
+                        </p>
                     </div>
                 </div>
                 
-                <div class="table-container">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Item</th>
-                                <th class="text-center">Qty</th>
-                                <th class="text-center">Unit Price</th>
-                                <th class="text-center">Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><strong><?php echo $order->prod_name; ?></strong></td>
-                                <td class="text-center"><?php echo $order->prod_qty; ?></td>
-                                <td class="text-center">₱<?php echo number_format($order->prod_price, 2); ?></td>
-                                <td class="text-center">₱<?php echo number_format($total, 2); ?></td>
-                            </tr>
-                            
-                            <tr class="total-row">
-                                <td colspan="2"></td>
-                                <td class="text-right"><strong>Subtotal:</strong></td>
-                                <td class="text-center">₱<?php echo number_format($total, 2); ?></td>
-                            </tr>
-                            
-                            <tr class="total-row">
-                                <td colspan="2"></td>
-                                <td class="text-right"><strong>Grand Total:</strong></td>
-                                <td class="text-center text-danger"><strong>₱<?php echo number_format($total, 2); ?></strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-center">Unit Price</th>
+                            <th class="text-center">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                          $baseSubtotal = 0;
+                          $additionalTotal = 0;
+                          while ($row = $itemsRes->fetch_object()) {
+                            $lineBase = ($row->prod_price * $row->prod_qty);
+                            $lineAdditional = (float)$row->additional_charge;
+                            $lineTotal = $lineBase + $lineAdditional;
+                            $baseSubtotal += $lineBase;
+                            $additionalTotal += $lineAdditional;
+                        ?>
+                        <tr>
+                            <td><strong><?php echo htmlspecialchars($row->prod_name); ?></strong></td>
+                            <td class="text-center"><?php echo (int)$row->prod_qty; ?></td>
+                            <td class="text-center">₱<?php echo number_format($row->prod_price, 2); ?></td>
+                            <td class="text-center">₱<?php echo number_format($lineTotal, 2); ?></td>
+                        </tr>
+                        <?php if ($lineAdditional > 0): ?>
+                        <tr>
+                            <td colspan="4" style="padding-top:0; padding-bottom:10px;">
+                                <small style="color:#666;">Includes takeout additional charge of ₱<?php echo number_format($lineAdditional,2); ?> (₱1 per qualifying item).</small>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                        <?php } ?>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td class="text-right">
+                                <p><strong>Subtotal (Items):</strong></p>
+                            </td>
+                            <td class="text-center">
+                                <p><strong>₱<?php echo number_format($baseSubtotal, 2); ?></strong></p>
+                            </td>
+                        </tr>
+                        <?php if (($summary->order_type ?? 'dine-in') === 'takeout' && $additionalTotal > 0): ?>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td class="text-right">
+                                <p><strong>Takeout Additional Charges:</strong></p>
+                            </td>
+                            <td class="text-center">
+                                <p><strong>₱<?php echo number_format($additionalTotal, 2); ?></strong></p>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                        <tr>
+                            <td colspan="2"></td>
+                            <td class="text-right">
+                                <h4><strong>Grand Total:</strong></h4>
+                            </td>
+                            <td class="text-center text-danger">
+                                <h4><strong>₱<?php echo number_format((float)$summary->grand_total, 2); ?></strong></h4>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <?php if (($summary->order_type ?? 'dine-in') === 'takeout'): ?>
+                <div style="margin-top:10px; color:#666;">
+                    <small>Note: Takeout orders include an additional ₱1 per Double variants and Regular + Spicy/Combo items.</small>
                 </div>
+                <?php endif; ?>
                 
-                <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px dashed #e0e0e0;">
+                <div style="text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px dashed #e0e0e0;">
                     <p style="color: #666; font-style: italic;">Thank you for your order!</p>
                     <p style="margin-top: 10px;">For inquiries, please contact us at +63 997 369 5988</p>
                 </div>
             </div>
         </div>
         
-        <div class="print-section">
-            <button id="print" onclick="printContent('Receipt');" class="btn-print">
-                <i class="fas fa-print"></i> Print Receipt
-            </button>
+        <div class="row">
+            <div class="well col-xs-10 col-sm-10 col-md-6 col-xs-offset-1 col-sm-offset-1 col-md-offset-3">
+                <button id="print" onclick="printContent('Receipt');" class="btn btn-success">
+                    <i class="fas fa-print"></i> Print Receipt
+                </button>
+            </div>
         </div>
     </div>
 </body>
@@ -307,4 +359,3 @@ while ($order = $res->fetch_object()) {
         $('body').html(restorepage);
     }
 </script>
-<?php } ?>

@@ -1,4 +1,5 @@
 <?php
+if (!function_exists('check_login')) {
 function check_login()
 {
 if(strlen($_SESSION['staff_id'])==0)
@@ -9,5 +10,6 @@ if(strlen($_SESSION['staff_id'])==0)
 		$_SESSION["staff_id"]="";
 		header("Location: http://$host$uri/$extra");
 	}
+}
 }
 ?>

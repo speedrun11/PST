@@ -10,7 +10,8 @@ if(isset($_GET['update'])) {
     $id = $_GET['update'];
     $query = "SELECT * FROM rpos_products WHERE prod_id = ?";
     $stmt = $mysqli->prepare($query);
-    $stmt->bind_param('i', $id);
+    // prod_id is a varchar, bind as string
+    $stmt->bind_param('s', $id);
     $stmt->execute();
     $res = $stmt->get_result();
     $product = $res->fetch_object();
@@ -20,6 +21,51 @@ if(isset($_GET['update'])) {
         header("Location: products.php");
         exit;
     }
+}
+
+// Load all ingredients and current product ingredient links
+$all_ingredients = [];
+$current_links = [];
+
+// Fetch all ingredients
+$ing_sql = "SELECT ingredient_id, ingredient_name, ingredient_unit FROM rpos_ingredients ORDER BY ingredient_name ASC";
+$ing_stmt = $mysqli->prepare($ing_sql);
+if ($ing_stmt) {
+    $ing_stmt->execute();
+    $ing_res = $ing_stmt->get_result();
+    while ($row = $ing_res->fetch_object()) {
+        $all_ingredients[] = $row;
+    }
+    $ing_stmt->close();
+}
+
+// Fetch current product ingredient links
+if (isset($product)) {
+    $link_sql = "SELECT ingredient_id, quantity_required FROM rpos_product_ingredients WHERE product_id = ?";
+    $link_stmt = $mysqli->prepare($link_sql);
+    if ($link_stmt) {
+        $link_stmt->bind_param('s', $product->prod_id);
+        $link_stmt->execute();
+        $link_res = $link_stmt->get_result();
+        while ($row = $link_res->fetch_assoc()) {
+            $current_links[$row['ingredient_id']] = (float)$row['quantity_required'];
+        }
+        $link_stmt->close();
+    }
+}
+
+// Get all products for quick-fill (excluding current one)
+$all_products = [];
+$prodListSql = "SELECT prod_id, prod_name FROM rpos_products WHERE prod_id != ? ORDER BY prod_name ASC";
+$prodListStmt = $mysqli->prepare($prodListSql);
+if ($prodListStmt) {
+    $prodListStmt->bind_param('s', $product->prod_id);
+    $prodListStmt->execute();
+    $prodListRes = $prodListStmt->get_result();
+    while ($p = $prodListRes->fetch_object()) {
+        $all_products[] = $p;
+    }
+    $prodListStmt->close();
 }
 
 // Handle update action
@@ -32,6 +78,7 @@ if(isset($_POST['update_product'])) {
     $prod_quantity = (int)$_POST['prod_quantity'];
     $prod_threshold = (int)$_POST['prod_threshold'];
     $staff_id = $_SESSION['staff_id'];
+    $selected_ingredients = isset($_POST['ingredients']) ? $_POST['ingredients'] : [];
     
     // Validate inputs
     if(empty($prod_code) || empty($prod_name) || empty($prod_category) || $prod_price <= 0) {
@@ -105,7 +152,7 @@ if(isset($_POST['update_product'])) {
                 WHERE prod_id = ?";
                 
         $stmt = $mysqli->prepare($update);
-        $stmt->bind_param('sssddisi', 
+        $stmt->bind_param('sssddiss', 
             $prod_code, 
             $prod_name, 
             $prod_category, 
@@ -116,9 +163,37 @@ if(isset($_POST['update_product'])) {
             $prod_id);
         $stmt->execute();
         
-        if($stmt->affected_rows === 0) {
-            throw new Exception("No changes made or product not found");
+        // Do not hard fail if no row was changed; we may still update ingredients
+        // Sync product ingredients: replace existing with submitted selection
+        // First, delete all current links for this product
+        $del_sql = "DELETE FROM rpos_product_ingredients WHERE product_id = ?";
+        $del_stmt = $mysqli->prepare($del_sql);
+        if ($del_stmt) {
+            $del_stmt->bind_param('s', $prod_id);
+            $del_stmt->execute();
+            $del_stmt->close();
         }
+
+        // Insert new links
+        if (!empty($selected_ingredients)) {
+            $ins_sql = "INSERT INTO rpos_product_ingredients (product_id, ingredient_id, quantity_required) VALUES (?, ?, ?)";
+            $ins_stmt = $mysqli->prepare($ins_sql);
+            if (!$ins_stmt) {
+                throw new Exception("Failed to prepare ingredient insert: " . $mysqli->error);
+            }
+            foreach ($selected_ingredients as $ingredient_data) {
+                if (!isset($ingredient_data['ingredient_id'])) { continue; }
+                $ing_id = $ingredient_data['ingredient_id'];
+                $qty_req = isset($ingredient_data['quantity_required']) && $ingredient_data['quantity_required'] !== '' ? (float)$ingredient_data['quantity_required'] : 0.0;
+                if ($qty_req <= 0) { continue; }
+                $ins_stmt->bind_param('ssd', $prod_id, $ing_id, $qty_req);
+                if (!$ins_stmt->execute()) {
+                    throw new Exception("Failed to save ingredient link: " . $ins_stmt->error);
+                }
+            }
+            $ins_stmt->close();
+        }
+
         
         // Prepare activity log data
         $activity_type = 'Update';
@@ -146,7 +221,8 @@ if(isset($_POST['update_product'])) {
         $log_stmt = $mysqli->prepare($log_query);
         
         if ($log_stmt) {
-            $log_stmt->bind_param('isiiiiss', 
+            // product_id is varchar, bind as string
+            $log_stmt->bind_param('ssiiiiss', 
                 $prod_id, 
                 $activity_type, 
                 $quantity_change, 
@@ -310,6 +386,93 @@ if(isset($_POST['update_product'])) {
                     </div>
                   </div>
                 </div>
+
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="form-group">
+                      <label class="form-control-label text-gold">Quick-fill Recipe</label>
+                      <div class="card" style="background: rgba(26, 26, 46, 0.5); border: 1px solid rgba(192, 160, 98, 0.3);">
+                        <div class="card-body">
+                          <div class="row align-items-end">
+                            <div class="col-md-5">
+                              <label class="text-gold">Copy from product A</label>
+                              <select id="qf_product_a" class="form-control bg-transparent text-light border-light">
+                                <option value="">Select product</option>
+                                <?php foreach($all_products as $p): ?>
+                                  <option value="<?php echo $p->prod_id; ?>"><?php echo htmlspecialchars($p->prod_name); ?></option>
+                                <?php endforeach; ?>
+                              </select>
+                            </div>
+                            <div class="col-md-2">
+                              <label class="text-gold">x</label>
+                              <input id="qf_mult_a" type="number" min="0" step="0.01" class="form-control bg-transparent text-light border-light" value="1">
+                            </div>
+                            <div class="col-md-5">
+                              <label class="text-gold">Copy from product B (optional)</label>
+                              <select id="qf_product_b" class="form-control bg-transparent text-light border-light">
+                                <option value="">Select product</option>
+                                <?php foreach($all_products as $p): ?>
+                                  <option value="<?php echo $p->prod_id; ?>"><?php echo htmlspecialchars($p->prod_name); ?></option>
+                                <?php endforeach; ?>
+                              </select>
+                            </div>
+                            <div class="col-md-2 mt-3">
+                              <label class="text-gold">x</label>
+                              <input id="qf_mult_b" type="number" min="0" step="0.01" class="form-control bg-transparent text-light border-light" value="1">
+                            </div>
+                          </div>
+                          <div class="text-right mt-3">
+                            <button id="qf_apply" type="button" class="btn btn-sm btn-primary">Apply Quick-fill</button>
+                          </div>
+                          <small class="text-muted">Tip: Doubles = multiplier 2. Combos = pick two bases with multiplier 1.</small>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row">
+                  <div class="col-md-12">
+                    <div class="form-group">
+                      <label class="form-control-label text-gold">Product Ingredients</label>
+                      <div class="card" style="background: rgba(26, 26, 46, 0.5); border: 1px solid rgba(192, 160, 98, 0.3);">
+                        <div class="card-body">
+                          <p class="text-muted mb-3">Select ingredients and specify quantities required per product unit:</p>
+                          <div id="ingredients-container">
+                            <?php if(empty($all_ingredients)): ?>
+                              <p class="text-warning">No ingredients available. Please add ingredients first.</p>
+                            <?php else: ?>
+                              <?php foreach($all_ingredients as $index => $ingredient): 
+                                  $checked = isset($current_links[$ingredient->ingredient_id]);
+                                  $qtyVal = $checked ? number_format($current_links[$ingredient->ingredient_id], 2, '.', '') : '';
+                                ?>
+                                <div class="ingredient-row mb-3 p-3" style="background: rgba(26, 26, 46, 0.3); border-radius: 5px; border: 1px solid rgba(192, 160, 98, 0.2);">
+                                  <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                      <div class="form-check">
+                                        <input class="form-check-input ingredient-checkbox" type="checkbox" name="ingredients[<?php echo $index; ?>][ingredient_id]" value="<?php echo $ingredient->ingredient_id; ?>" id="ingredient_<?php echo $index; ?>" <?php echo $checked ? 'checked' : ''; ?>>
+                                        <label class="form-check-label text-white" for="ingredient_<?php echo $index; ?>">
+                                          <?php echo htmlspecialchars($ingredient->ingredient_name); ?>
+                                          <small class="text-muted">(<?php echo htmlspecialchars($ingredient->ingredient_unit); ?>)</small>
+                                        </label>
+                                      </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                      <input type="number" step="0.01" min="0" class="form-control ingredient-quantity bg-transparent text-light border-light" name="ingredients[<?php echo $index; ?>][quantity_required]" placeholder="Quantity" <?php echo $checked ? '' : 'disabled'; ?> value="<?php echo $qtyVal; ?>">
+                                    </div>
+                                    <div class="col-md-2">
+                                      <small class="text-muted"><?php echo htmlspecialchars($ingredient->ingredient_unit); ?></small>
+                                    </div>
+                                  </div>
+                                </div>
+                              <?php endforeach; ?>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 
                 <div class="text-center">
                   <button type="submit" name="update_product" class="btn btn-primary">
@@ -426,6 +589,29 @@ if(isset($_POST['update_product'])) {
   </style>
   
   <script>
+    // Handle ingredient checkbox changes to enable/disable quantity inputs
+    document.addEventListener('DOMContentLoaded', function() {
+      const container = document.getElementById('ingredients-container');
+      if (!container) return;
+      container.querySelectorAll('.ingredient-row').forEach(function(row) {
+        const checkbox = row.querySelector('.ingredient-checkbox');
+        const quantity = row.querySelector('.ingredient-quantity');
+        if (!checkbox || !quantity) return;
+        const syncState = () => {
+          if (checkbox.checked) {
+            quantity.disabled = false;
+            quantity.required = true;
+            if (!quantity.value) quantity.value = '1.00';
+          } else {
+            quantity.disabled = true;
+            quantity.required = false;
+            quantity.value = '';
+          }
+        };
+        checkbox.addEventListener('change', syncState);
+        syncState();
+      });
+    });
     // Show file name when image is selected
     document.querySelector('.custom-file-input').addEventListener('change', function(e) {
       var fileName = document.getElementById("prod_img").files[0]?.name || "Choose file";
@@ -456,6 +642,52 @@ if(isset($_POST['update_product'])) {
         });
       });
     <?php endif; ?>
+
+    // Quick-fill logic
+    async function fetchRecipe(productId) {
+      if (!productId) return [];
+      const res = await fetch('get_product_recipe.php?product_id=' + encodeURIComponent(productId));
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json && json.ingredients) ? json.ingredients : [];
+    }
+
+    function applyRecipeToForm(mergedMap) {
+      const rows = document.querySelectorAll('#ingredients-container .ingredient-row');
+      rows.forEach(row => {
+        const checkbox = row.querySelector('.ingredient-checkbox');
+        const qty = row.querySelector('.ingredient-quantity');
+        const ingId = checkbox ? checkbox.value : null;
+        if (!ingId) return;
+        if (mergedMap.has(ingId)) {
+          checkbox.checked = true;
+          qty.disabled = false;
+          qty.required = true;
+          qty.value = mergedMap.get(ingId).toFixed(2);
+        }
+      });
+    }
+
+    document.getElementById('qf_apply')?.addEventListener('click', async function() {
+      const a = document.getElementById('qf_product_a')?.value || '';
+      const b = document.getElementById('qf_product_b')?.value || '';
+      const multA = parseFloat(document.getElementById('qf_mult_a')?.value || '1') || 1;
+      const multB = parseFloat(document.getElementById('qf_mult_b')?.value || '1') || 1;
+
+      const [ra, rb] = await Promise.all([fetchRecipe(a), fetchRecipe(b)]);
+      const merged = new Map();
+      ra.forEach(item => {
+        const base = parseFloat(item.quantity_required) || 0;
+        const val = (merged.get(item.ingredient_id) || 0) + base * multA;
+        merged.set(item.ingredient_id, val);
+      });
+      rb.forEach(item => {
+        const base = parseFloat(item.quantity_required) || 0;
+        const val = (merged.get(item.ingredient_id) || 0) + base * multB;
+        merged.set(item.ingredient_id, val);
+      });
+      applyRecipeToForm(merged);
+    });
   </script>
 </body>
 </html>

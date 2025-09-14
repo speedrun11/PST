@@ -80,6 +80,11 @@ while ($staff = $res->fetch_object()) {
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link text-light" href="ingredients.php">
+              <i class="fas fa-seedling text-gold"></i> Ingredients
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link text-light" href="categories.php">
               <i class="fas fa-tags text-gold"></i> Categories
             </a>
@@ -102,8 +107,18 @@ while ($staff = $res->fetch_object()) {
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link text-light" href="advanced_forecast_reports.php">
+              <i class="fas fa-chart-line text-gold"></i> Advanced Forecasting
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link text-light" href="forecast_reports.php">
-              <i class="fas fa-chart-line text-gold"></i> Forecast Reports
+              <i class="fas fa-chart-bar text-gold"></i> Basic Reports
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link text-light" href="forecast_performance.php">
+              <i class="fas fa-tachometer-alt text-gold"></i> Performance Dashboard
             </a>
           </li>
           <li class="nav-item">

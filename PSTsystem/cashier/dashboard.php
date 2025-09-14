@@ -308,12 +308,32 @@ require_once('partials/_analytics.php');
                 </div>
               </div>
             </div>
+            <div class="col-xl-3 col-lg-6">
+              <div class="card card-stats mb-4 mb-xl-0">
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col">
+                      <h5 class="card-title text-uppercase text-muted mb-0">Pending Orders</h5>
+                      <span class="h2 font-weight-bold mb-0"><?php echo $pendingOrders ?? 0; ?></span>
+                    </div>
+                    <div class="col-auto">
+                      <div class="icon icon-shape bg-warning text-white rounded-circle shadow">
+                        <i class="fas fa-hourglass-half"></i>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <!-- Page content -->
     <div class="container-fluid mt--7">
+      <!-- Quick Order Widget -->
+      <?php include('quick_order_widget.php'); ?>
+      
       <div class="row mt-5">
         <div class="col-xl-12 mb-5 mb-xl-0">
           <div class="card shadow">
@@ -334,9 +354,7 @@ require_once('partials/_analytics.php');
                   <tr>
                     <th class="text-success" scope="col">Code</th>
                     <th scope="col">Customer</th>
-                    <th class="text-success" scope="col">Product</th>
-                    <th scope="col">Unit Price</th>
-                    <th class="text-success" scope="col">Qty</th>
+                    <th class="text-success" scope="col">Items</th>
                     <th scope="col">Total</th>
                     <th scop="col">Status</th>
                     <th class="text-success" scope="col">Date</th>
@@ -344,26 +362,40 @@ require_once('partials/_analytics.php');
                 </thead>
                 <tbody>
                   <?php
-                  $ret = "SELECT * FROM  rpos_orders ORDER BY `rpos_orders`.`created_at` DESC LIMIT 7 ";
+                  $ret = "SELECT order_code, customer_name,
+                                 GROUP_CONCAT(CONCAT(prod_name,' x',prod_qty) SEPARATOR ', ') AS items,
+                                 SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS total_amount,
+                                 MIN(order_status) AS order_status,
+                                 MIN(created_at) AS created_at
+                          FROM rpos_orders
+                          GROUP BY order_code, customer_name
+                          ORDER BY MIN(created_at) DESC
+                          LIMIT 7";
                   $stmt = $mysqli->prepare($ret);
                   $stmt->execute();
                   $res = $stmt->get_result();
                   while ($order = $res->fetch_object()) {
-                    $total = ($order->prod_price * $order->prod_qty);
 
                   ?>
                     <tr>
                       <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
                       <td><?php echo $order->customer_name; ?></td>
-                      <td class="text-success"><?php echo $order->prod_name; ?></td>
-                      <td>₱<?php echo $order->prod_price; ?></td>
-                      <td class="text-success"><?php echo $order->prod_qty; ?></td>
-                      <td>₱<?php echo $total; ?></td>
-                      <td><?php if ($order->order_status == '') {
-                            echo "<span class='badge badge-danger'>Not Paid</span>";
+                      <td class="text-success"><?php echo htmlspecialchars($order->items); ?></td>
+                      <td>₱<?php echo number_format($order->total_amount,2); ?></td>
+                      <td>
+                        <?php
+                          $status = trim($order->order_status);
+                          if ($status === '' || strtolower($status) === 'pending' || strtolower($status) === 'not paid') {
+                            echo "<span class='badge' style=\"background:#ff9f43;color:#1a1a2e;\">Pending</span>";
+                          } elseif (strtolower($status) === 'paid' || strtolower($status) === 'completed') {
+                            echo "<span class='badge badge-success'>".htmlspecialchars($status)."</span>";
+                          } elseif (strtolower($status) === 'cancelled') {
+                            echo "<span class='badge badge-danger'>Cancelled</span>";
                           } else {
-                            echo "<span class='badge badge-success'>$order->order_status</span>";
-                          } ?></td>
+                            echo "<span class='badge' style=\"background:#ff9f43;color:#1a1a2e;\">".htmlspecialchars($status)."</span>";
+                          }
+                        ?>
+                      </td>
                       <td class="text-success"><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
                     </tr>
                   <?php } ?>
@@ -430,5 +462,16 @@ require_once('partials/_analytics.php');
   <?php
   require_once('partials/_scripts.php');
   ?>
+  
+  <!-- Quick Order Modal -->
+  <?php include('quick_order_modal.php'); ?>
+  
+  <!-- Quick Order Button -->
+  <div style="position: fixed; bottom: 30px; right: 30px; z-index: 1000;">
+    <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#quickOrderModal" 
+            style="border-radius: 50px; padding: 15px 25px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);">
+      <i class="fas fa-bolt"></i> Quick Order
+    </button>
+  </div>
 </body>
 </html>

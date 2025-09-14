@@ -137,7 +137,7 @@ if(isset($_GET['delete'])) {
                     <th scope="col" class="text-gold">Price</th>
                     <th scope="col" class="text-gold">Current Stock</th>
                     <th scope="col" class="text-gold">Threshold</th>
-                    <th scope="col" class="text-gold">Supplier</th>
+                    <th scope="col" class="text-gold">Ingredients</th>
                     <th scope="col" class="text-gold">Status</th>
                     <th scope="col" class="text-gold">Actions</th>
                   </tr>
@@ -159,12 +159,12 @@ if(isset($_GET['delete'])) {
                   $params = [];
                   if(isset($_GET['search']) && !empty($_GET['search'])) {
                     $search_term = "%".trim($_GET['search'])."%";
-                    $search = " WHERE prod_name LIKE ? OR prod_code LIKE ?";
+                    $search = " WHERE p.prod_name LIKE ? OR p.prod_code LIKE ?";
                     $params = [$search_term, $search_term];
                   }
                   
                   // Get total number of products
-                  $count_query = "SELECT COUNT(*) AS total FROM rpos_products $search";
+                  $count_query = "SELECT COUNT(DISTINCT p.prod_id) AS total FROM rpos_products p $search";
                   $count_stmt = $mysqli->prepare($count_query);
                   if(!empty($params)) {
                     $count_stmt->bind_param(str_repeat('s', count($params)), ...$params);
@@ -178,7 +178,14 @@ if(isset($_GET['delete'])) {
                   $total_pages = ceil($total_products / $results_per_page);
                   
                   // Get products with pagination
-                  $ret = "SELECT * FROM rpos_products $search ORDER BY prod_name ASC LIMIT ?, ?";
+                  $ret = "SELECT p.*, 
+                         GROUP_CONCAT(CONCAT(i.ingredient_name, ' (', pi.quantity_required, ' ', i.ingredient_unit, ')') SEPARATOR ', ') as ingredients
+                         FROM rpos_products p 
+                         LEFT JOIN rpos_product_ingredients pi ON p.prod_id = pi.product_id 
+                         LEFT JOIN rpos_ingredients i ON pi.ingredient_id = i.ingredient_id 
+                         $search 
+                         GROUP BY p.prod_id 
+                         ORDER BY p.prod_name ASC LIMIT ?, ?";
                   $stmt = $mysqli->prepare($ret);
                   
                   if(!empty($params)) {
@@ -193,9 +200,45 @@ if(isset($_GET['delete'])) {
                   $res = $stmt->get_result();
                   
                   while ($product = $res->fetch_object()) {
+                    // Compute display quantity considering links (mirror/combo)
+                    $display_quantity = (int)$product->prod_quantity;
+                    $link_badge = '';
+                    $link_stmt = $mysqli->prepare("SELECT l.relation, l.base_product_id, bp.prod_name, bp.prod_quantity 
+                                                   FROM rpos_product_links l 
+                                                   JOIN rpos_products bp ON bp.prod_id = l.base_product_id 
+                                                   WHERE l.linked_product_id = ?");
+                    if ($link_stmt) {
+                      $link_stmt->bind_param('s', $product->prod_id);
+                      $link_stmt->execute();
+                      $link_res = $link_stmt->get_result();
+                      $bases = [];
+                      $is_mirror = false;
+                      while ($row = $link_res->fetch_assoc()) {
+                        if ($row['relation'] === 'mirror') {
+                          $is_mirror = true;
+                          // For mirror (double) variants, display stock is half of base stock (integer division)
+                          $base_qty = (int)$row['prod_quantity'];
+                          $display_quantity = intdiv(max(0, $base_qty), 2);
+                          $link_badge = '(Mirror of '.htmlspecialchars($row['prod_name']).')';
+                          // mirror should have only one base; break acceptable
+                        } else if ($row['relation'] === 'combo') {
+                          $bases[] = $row;
+                        }
+                      }
+                      if (!$is_mirror && count($bases) > 0) {
+                        // For combo, available stock is min of base stocks
+                        $mins = array_map(function($r){ return (int)$r['prod_quantity']; }, $bases);
+                        $display_quantity = count($mins) ? min($mins) : $display_quantity;
+                        // Compose badge label
+                        $names = array_map(function($r){ return htmlspecialchars($r['prod_name']); }, $bases);
+                        $link_badge = '(Combo of '.implode(' + ', $names).')';
+                      }
+                      $link_stmt->close();
+                    }
+
                     $status_class = '';
                     $status_text = '';
-                    $percentage = ($product->prod_quantity / $product->prod_threshold) * 100;
+                    $percentage = ($product->prod_threshold > 0) ? (($display_quantity / $product->prod_threshold) * 100) : 100;
                     
                     if ($percentage <= 25) {
                       $status_class = 'critical-stock';
@@ -229,21 +272,19 @@ if(isset($_GET['delete'])) {
                       <td class="text-white"><?php echo htmlspecialchars($product->prod_code); ?></td>
                       <td class="text-white"><?php echo htmlspecialchars($product->prod_category); ?></td>
                       <td class="text-success">₱<?php echo number_format($product->prod_price, 2); ?></td>
-                      <td class="text-white"><?php echo htmlspecialchars($product->prod_quantity); ?></td>
+                      <td class="text-white">
+                        <?php echo htmlspecialchars($display_quantity); ?>
+                        <?php if(!empty($link_badge)): ?>
+                          <br><small class="text-muted"><?php echo $link_badge; ?></small>
+                        <?php endif; ?>
+                      </td>
                       <td class="text-white"><?php echo htmlspecialchars($product->prod_threshold); ?></td>
                       <td class="text-white">
                       <?php 
-                      if($product->supplier_id) {
-                          $supplier_query = "SELECT supplier_name FROM rpos_suppliers WHERE supplier_id = ?";
-                          $supplier_stmt = $mysqli->prepare($supplier_query);
-                          $supplier_stmt->bind_param('i', $product->supplier_id);
-                          $supplier_stmt->execute();
-                          $supplier_stmt->bind_result($supplier_name);
-                          $supplier_stmt->fetch();
-                          echo htmlspecialchars($supplier_name);
-                          $supplier_stmt->close();
+                      if($product->ingredients) {
+                          echo htmlspecialchars($product->ingredients);
                       } else {
-                          echo 'None';
+                          echo 'No ingredients assigned';
                       }
                       ?>
                   </td>

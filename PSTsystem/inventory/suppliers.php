@@ -21,8 +21,8 @@ if(isset($_GET['delete'])) {
     $mysqli->begin_transaction();
     
     try {
-        // First check if any products are associated with this supplier
-        $check = "SELECT COUNT(*) FROM rpos_products WHERE supplier_id = ?";
+        // First check if any ingredients are associated with this supplier
+        $check = "SELECT COUNT(*) FROM rpos_ingredients WHERE supplier_id = ?";
         $stmt = $mysqli->prepare($check);
         if ($stmt) {
             $stmt->bind_param('i', $supplier_id);
@@ -32,7 +32,7 @@ if(isset($_GET['delete'])) {
             $stmt->close();
             
             if($product_count > 0) {
-                $_SESSION['error'] = "Cannot delete supplier - there are products associated with it";
+                $_SESSION['error'] = "Cannot delete supplier - there are ingredients associated with it";
                 header("Location: suppliers.php");
                 exit;
             }
@@ -143,8 +143,8 @@ if(isset($_GET['delete'])) {
                     <th scope="col" class="text-gold">Supplier</th>
                     <th scope="col" class="text-gold">Contact</th>
                     <th scope="col" class="text-gold">Email</th>
-                    <th scope="col" class="text-gold">Products Supplied</th>
-                    <th scope="col" class="text-gold">Last Delivery</th>
+                    <th scope="col" class="text-gold">Ingredients Supplied</th>
+                    <th scope="col" class="text-gold">Last Ingredient Delivery</th>
                     <th scope="col" class="text-gold">Actions</th>
                   </tr>
                 </thead>
@@ -191,8 +191,8 @@ if(isset($_GET['delete'])) {
                   
                   // Get suppliers with pagination
                   $ret = "SELECT s.*, 
-                          (SELECT COUNT(*) FROM rpos_products p WHERE p.supplier_id = s.supplier_id) as product_count,
-                          (SELECT MAX(last_restocked) FROM rpos_products p WHERE p.supplier_id = s.supplier_id) as last_delivery
+                          (SELECT COUNT(*) FROM rpos_ingredients gi WHERE gi.supplier_id = s.supplier_id) as ingredient_count,
+                          (SELECT MAX(last_restocked) FROM rpos_ingredients gi2 WHERE gi2.supplier_id = s.supplier_id) as last_ingredient_delivery
                           FROM rpos_suppliers s
                           $search
                           ORDER BY supplier_name ASC LIMIT ?, ?";
@@ -228,11 +228,11 @@ if(isset($_GET['delete'])) {
                         </th>
                         <td class="text-white"><?php echo htmlspecialchars($supplier->supplier_phone); ?></td>
                         <td class="text-white"><?php echo htmlspecialchars($supplier->supplier_email); ?></td>
-                        <td class="text-white"><?php echo $supplier->product_count; ?></td>
+                        <td class="text-white"><?php echo $supplier->ingredient_count; ?></td>
                         <td class="text-white">
                           <?php 
-                          if ($supplier->last_delivery) {
-                            echo date('M d, Y', strtotime($supplier->last_delivery));
+                          if ($supplier->last_ingredient_delivery) {
+                            echo date('M d, Y', strtotime($supplier->last_ingredient_delivery));
                           } else {
                             echo 'Never';
                           }
@@ -247,8 +247,8 @@ if(isset($_GET['delete'])) {
                               <a class="dropdown-item text-white" href="update_supplier.php?update=<?php echo $supplier->supplier_id; ?>">
                                 <i class="fas fa-edit text-primary mr-2"></i> Edit
                               </a>
-                              <a class="dropdown-item text-white" href="products.php?supplier=<?php echo $supplier->supplier_id; ?>">
-                                <i class="fas fa-boxes text-info mr-2"></i> View Products
+                              <a class="dropdown-item text-white" href="ingredients.php?supplier=<?php echo $supplier->supplier_id; ?>">
+                                <i class="fas fa-carrot text-info mr-2"></i> View Ingredients
                               </a>
                               <a class="dropdown-item text-white" href="suppliers.php?delete=<?php echo $supplier->supplier_id; ?>" onclick="return confirm('Are you sure you want to delete this supplier?');">
                                 <i class="fas fa-trash text-danger mr-2"></i> Delete

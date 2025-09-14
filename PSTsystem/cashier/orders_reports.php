@@ -37,10 +37,11 @@ require_once('partials/_head.php');
             background-color: var(--primary-dark);
             color: var(--text-light);
             font-family: 'Poppins', sans-serif;
+            line-height: 1.6;
         }
         
         .header {
-            background: url(assets/img/theme/pastil.jpg) no-repeat center center;
+            background: url(../admin/assets/img/theme/pastil.jpg) no-repeat center center;
             background-size: cover;
         }
         
@@ -51,10 +52,11 @@ require_once('partials/_head.php');
         .card {
             background: rgba(26, 26, 46, 0.8);
             border: 1px solid rgba(192, 160, 98, 0.2);
-            border-radius: 10px;
+            border-radius: 15px;
             backdrop-filter: blur(8px);
             transition: all var(--transition-speed) ease;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
         }
         
         .card:hover {
@@ -65,6 +67,7 @@ require_once('partials/_head.php');
         
         .table {
             color: var(--text-light);
+            margin-bottom: 0;
         }
         
         .table thead th {
@@ -103,6 +106,7 @@ require_once('partials/_head.php');
             text-transform: uppercase;
             font-size: 0.85rem;
             padding: 1rem;
+            white-space: nowrap;
         }
         
         .table tbody {
@@ -125,33 +129,209 @@ require_once('partials/_head.php');
             border-bottom: 1px solid rgba(192, 160, 98, 0.3);
             color: var(--accent-gold);
             font-family: 'Fredoka', sans-serif;
+            padding: 1.5rem;
         }
 
         .badge-danger {
             background-color: var(--accent-red);
             color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
         }
         
         .badge-success {
             background-color: var(--accent-green);
             color: var(--text-light);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
         }
         
-        @media (max-width: 768px) {
-            .table thead th {
-                font-size: 0.75rem;
-                padding: 0.75rem;
-            }
-            
-            .table tbody td, .table tbody th {
-                padding: 0.75rem;
-                font-size: 0.85rem;
-            }
+        .badge-warning {
+            background-color: #ff9f43;
+            color: var(--text-dark);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .order-type-badge {
+            padding: 0.4rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .order-items {
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: help;
+        }
+        
+        .order-items:hover {
+            white-space: normal;
+            overflow: visible;
+            background: rgba(192, 160, 98, 0.1);
+            padding: 0.5rem;
+            border-radius: 5px;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .stats-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: rgba(26, 26, 46, 0.8);
+            border: 1px solid rgba(192, 160, 98, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: all var(--transition-speed) ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-gold);
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            opacity: 0.8;
         }
         
         .card-header h3 {
             color: var(--accent-gold);
             font-family: 'Fredoka', sans-serif;
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        
+        .table-responsive {
+            border-radius: 0 0 15px 15px;
+            overflow: hidden;
+        }
+        
+        /* Enhanced Mobile Responsiveness */
+        @media (max-width: 1200px) {
+            .table thead th {
+                font-size: 0.8rem;
+                padding: 0.8rem;
+            }
+            
+            .table tbody td, .table tbody th {
+                padding: 0.8rem;
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .stats-cards {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.8rem;
+            }
+            
+            .stat-card {
+                padding: 1rem;
+            }
+            
+            .stat-number {
+                font-size: 1.5rem;
+            }
+            
+            .table thead th {
+                font-size: 0.7rem;
+                padding: 0.6rem;
+            }
+            
+            .table tbody td, .table tbody th {
+                padding: 0.6rem;
+                font-size: 0.8rem;
+            }
+            
+            .order-items {
+                max-width: 150px;
+            }
+            
+            .card-header {
+                padding: 1rem;
+            }
+            
+            .card-header h3 {
+                font-size: 1.2rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .stats-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .table-responsive {
+                font-size: 0.8rem;
+            }
+            
+            .table thead th {
+                font-size: 0.65rem;
+                padding: 0.5rem;
+            }
+            
+            .table tbody td, .table tbody th {
+                padding: 0.5rem;
+                font-size: 0.75rem;
+            }
+            
+            .order-items {
+                max-width: 100px;
+            }
+            
+            .badge-danger, .badge-success, .badge-warning {
+                font-size: 0.7rem;
+                padding: 0.3rem 0.6rem;
+            }
+            
+            .order-type-badge {
+                font-size: 0.65rem;
+                padding: 0.3rem 0.6rem;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .card {
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+            
+            .table tbody tr:hover {
+                background: transparent !important;
+                transform: none !important;
+            }
+            
+            .stats-cards {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -176,6 +356,34 @@ require_once('partials/_head.php');
     </div>
     <!-- Page content -->
     <div class="container-fluid mt--8">
+      <!-- Statistics Cards -->
+      <?php
+      // Get statistics
+      $totalOrders = $mysqli->query("SELECT COUNT(DISTINCT order_code) as total FROM rpos_orders")->fetch_object()->total;
+      $totalRevenue = $mysqli->query("SELECT SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) as total FROM rpos_orders WHERE order_status = 'Paid'")->fetch_object()->total ?? 0;
+      $pendingOrders = $mysqli->query("SELECT COUNT(DISTINCT order_code) as total FROM rpos_orders WHERE order_status = 'Pending'")->fetch_object()->total;
+      $paidOrders = $mysqli->query("SELECT COUNT(DISTINCT order_code) as total FROM rpos_orders WHERE order_status = 'Paid'")->fetch_object()->total;
+      ?>
+      
+      <div class="stats-cards">
+        <div class="stat-card">
+          <div class="stat-number"><?php echo number_format($totalOrders); ?></div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">₱<?php echo number_format($totalRevenue, 2); ?></div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number"><?php echo number_format($pendingOrders); ?></div>
+          <div class="stat-label">Pending Orders</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number"><?php echo number_format($paidOrders); ?></div>
+          <div class="stat-label">Paid Orders</div>
+        </div>
+      </div>
+      
       <!-- Table -->
       <div class="row">
         <div class="col">
@@ -183,7 +391,10 @@ require_once('partials/_head.php');
             <div class="card-header border-0">
               <div class="row align-items-center">
                 <div class="col">
-                  <h3 class="mb-0">Orders Records</h3>
+                  <h3 class="mb-0">
+                    <i class="fas fa-chart-line text-gold"></i>
+                    Orders Records
+                  </h3>
                 </div>
               </div>
             </div>
@@ -191,39 +402,89 @@ require_once('partials/_head.php');
               <table class="table align-items-center table-flush">
                 <thead class="thead-dark">
                   <tr>
-                    <th class="text-gold" scope="col">Code</th>
-                    <th scope="col">Customer</th>
-                    <th class="text-gold" scope="col">Product</th>
-                    <th scope="col">Unit Price</th>
-                    <th class="text-gold" scope="col">#</th>
-                    <th scope="col">Total Price</th>
-                    <th scop="col">Status</th>
-                    <th scope="col">Date</th>
+                    <th class="text-gold" scope="col">
+                      <i class="fas fa-hashtag"></i> Code
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-user"></i> Customer
+                    </th>
+                    <th class="text-gold" scope="col">
+                      <i class="fas fa-shopping-cart"></i> Items
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-tag"></i> Type
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-money-bill-wave"></i> Total
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-info-circle"></i> Status
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-calendar"></i> Date
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   <?php
-                  $ret = "SELECT * FROM  rpos_orders ORDER BY `created_at` DESC  ";
+                  $ret = "SELECT order_code, customer_name, 
+                                  GROUP_CONCAT(CONCAT(prod_name,' x',prod_qty) SEPARATOR ', ') AS items,
+                                  SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS total_amount,
+                                  MIN(order_status) AS order_status,
+                                  MIN(order_type) AS order_type,
+                                  MIN(created_at) AS created_at
+                           FROM rpos_orders
+                           GROUP BY order_code, customer_name
+                           ORDER BY MIN(created_at) DESC";
                   $stmt = $mysqli->prepare($ret);
                   $stmt->execute();
                   $res = $stmt->get_result();
                   while ($order = $res->fetch_object()) {
-                      $total = ($order->prod_price * $order->prod_qty);
 
                   ?>
                     <tr>
-                      <th class="text-gold" scope="row"><?php echo $order->order_code; ?></th>
-                      <td><?php echo $order->customer_name; ?></td>
-                      <td class="text-gold"><?php echo $order->prod_name; ?></td>
-                      <td>₱ <?php echo $order->prod_price; ?></td>
-                      <td class="text-gold"><?php echo $order->prod_qty; ?></td>
-                      <td>₱ <?php echo $total; ?></td>
-                      <td><?php if ($order->order_status == '') {
-                              echo "<span class='badge badge-danger'>Not Paid</span>";
+                      <th class="text-gold" scope="row">
+                        <strong><?php echo $order->order_code; ?></strong>
+                      </th>
+                      <td>
+                        <div class="font-weight-bold"><?php echo htmlspecialchars($order->customer_name); ?></div>
+                      </td>
+                      <td class="text-gold order-items" title="<?php echo htmlspecialchars($order->items); ?>">
+                        <?php echo htmlspecialchars($order->items); ?>
+                      </td>
+                      <td>
+                        <span class="order-type-badge" style="background: <?php echo ($order->order_type==='takeout'?'var(--accent-gold)':'var(--accent-blue)'); ?>; color: var(--text-dark);">
+                          <i class="fas fa-<?php echo ($order->order_type==='takeout'?'shopping-bag':'utensils'); ?>"></i>
+                          <?php echo ucfirst($order->order_type ?? 'dine-in'); ?>
+                        </span>
+                      </td>
+                      <td>
+                        <div class="font-weight-bold text-success">
+                          ₱<?php echo number_format($order->total_amount, 2); ?>
+                        </div>
+                      </td>
+                      <td>
+                        <?php
+                          $status = trim($order->order_status);
+                          if ($status === '' || strtolower($status) === 'pending' || strtolower($status) === 'not paid') {
+                            echo "<span class='badge-warning'>Pending</span>";
+                          } elseif (strtolower($status) === 'paid' || strtolower($status) === 'completed') {
+                            echo "<span class='badge-success'>".htmlspecialchars($status)."</span>";
+                          } elseif (strtolower($status) === 'cancelled') {
+                            echo "<span class='badge-danger'>Cancelled</span>";
                           } else {
-                              echo "<span class='badge badge-success'>$order->order_status</span>";
-                          } ?></td>
-                      <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
+                            echo "<span class='badge-warning'>".htmlspecialchars($status)."</span>";
+                          }
+                        ?>
+                      </td>
+                      <td>
+                        <div class="text-muted">
+                          <?php echo date('M d, Y', strtotime($order->created_at)); ?>
+                        </div>
+                        <small class="text-gold">
+                          <?php echo date('g:i A', strtotime($order->created_at)); ?>
+                        </small>
+                      </td>
                     </tr>
                   <?php } ?>
                 </tbody>

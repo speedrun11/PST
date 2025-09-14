@@ -5,51 +5,92 @@ include('config/checklogin.php');
 check_login();
 require_once('partials/_head.php');
 
-// Get forecast data (in a real system, this would come from your forecasting algorithm)
-$forecast_data = array(
-    array(
-        'product' => 'Chicken Pastil',
-        'current_stock' => 120,
-        'daily_usage' => 15,
-        'forecast_days' => 8,
-        'status' => 'critical'
-    ),
-    array(
-        'product' => 'Rice',
-        'current_stock' => 85,
-        'daily_usage' => 8,
-        'forecast_days' => 10,
-        'status' => 'warning'
-    ),
-    array(
-        'product' => 'Banana Leaves',
-        'current_stock' => 65,
-        'daily_usage' => 5,
-        'forecast_days' => 13,
-        'status' => 'normal'
-    ),
-    array(
-        'product' => 'Spices',
-        'current_stock' => 42,
-        'daily_usage' => 3,
-        'forecast_days' => 14,
-        'status' => 'normal'
-    ),
-    array(
-        'product' => 'Packaging',
-        'current_stock' => 78,
-        'daily_usage' => 6,
-        'forecast_days' => 13,
-        'status' => 'normal'
-    )
-);
+// Include the SalesForecasting class
+require_once('classes/SalesForecasting.php');
 
-// Calculate forecast dates
-foreach ($forecast_data as &$item) {
-    $item['forecast_date'] = date('Y-m-d', strtotime("+{$item['forecast_days']} days"));
-    $item['status_class'] = $item['status'] == 'critical' ? 'critical-stock' : ($item['status'] == 'warning' ? 'low-stock' : 'text-success');
+// Initialize the sales forecasting system
+try {
+    $forecasting = new SalesForecasting($mysqli);
+    
+    // Get forecast period from URL parameter (support 'timeframe' or 'days')
+    $forecast_days = isset($_GET['timeframe']) ? (int)$_GET['timeframe'] : (isset($_GET['days']) ? (int)$_GET['days'] : 14);
+    $forecast_days = max(7, min(90, $forecast_days)); // Limit between 7-90 days
+
+    // Get all product forecasts with advanced analytics
+    $raw_forecasts = $forecasting->getAllProductForecasts(100);
+    
+    // Normalize keys for UI expectations with real data
+    $forecast_data = array_map(function($f){
+        $status = $f['urgency'] ?? 'normal';
+        $status_class = 'text-success';
+        if ($status === 'critical') $status_class = 'critical-stock';
+        elseif ($status === 'high' || $status === 'medium') $status_class = 'low-stock';
+        
+        return [
+            'product' => $f['product_name'] ?? 'Unknown Product',
+            'current_stock' => $f['current_stock'] ?? 0,
+            'daily_usage' => $f['avg_daily_demand'] ?? 0,
+            'forecast_days' => $f['days_until_stockout'] ?? 0,
+            'recommended_order' => $f['recommended_order_quantity'] ?? 0,
+            'confidence' => $f['confidence'] ?? 0,
+            'forecast_date' => date('Y-m-d'),
+            'status' => $status,
+            'status_class' => $status_class,
+            'product_id' => $f['product_id'] ?? '',
+            'product_type' => $f['product_type'] ?? 'regular'
+        ];
+    }, $raw_forecasts);
+    
+} catch (Exception $e) {
+    $_SESSION['error'] = "Forecasting system error: " . $e->getMessage();
+    $forecast_data = [];
+    $raw_forecasts = [];
 }
-unset($item);
+
+// Get detailed forecast for a specific product if requested
+$detailed_forecast = null;
+$selected_product = null;
+$historical_data = [];
+
+if (isset($_GET['product_id']) && $_GET['product_id'] !== '') {
+    try {
+        $selected_product = $_GET['product_id'];
+        $detailed_forecast = $forecasting->predictFutureDemand($selected_product, $forecast_days);
+        $historical_data = $forecasting->getHistoricalSales($selected_product, 90);
+    } catch (Exception $e) {
+        $_SESSION['error'] = "Error getting detailed forecast: " . $e->getMessage();
+        $detailed_forecast = null;
+        $historical_data = [];
+    }
+}
+
+// Load product list for selector
+$products_list = [];
+$plist_stmt = $mysqli->prepare("SELECT prod_id, prod_name FROM rpos_products ORDER BY prod_name ASC");
+if ($plist_stmt) {
+    $plist_stmt->execute();
+    $plist_res = $plist_stmt->get_result();
+    while ($p = $plist_res->fetch_assoc()) { $products_list[] = $p; }
+    $plist_stmt->close();
+}
+
+// Calculate chart data
+$critical = 0;
+$warning = 0;
+$normal = 0;
+
+if (!empty($forecast_data)) {
+    $critical = count(array_filter($forecast_data, function($item) { 
+        return ($item['status'] ?? '') == 'critical'; 
+    }));
+    $warning = count(array_filter($forecast_data, function($item) { 
+        $s = ($item['status'] ?? '');
+        return ($s == 'high' || $s == 'medium');
+    }));
+    $normal = count(array_filter($forecast_data, function($item) { 
+        return ($item['status'] ?? '') == 'normal' || ($item['status'] ?? '') == 'low'; 
+    }));
+}
 ?>
 
 <body>
@@ -82,7 +123,7 @@ unset($item);
                 <i class="fas fa-print"></i> Print Report
               </button>
               <a href="generate_forecast.php" class="btn btn-sm btn-primary ml-2">
-                <i class="fas fa-sync-alt"></i> Regenerate Forecast
+                <i class="fas fa-sync-alt"></i> Generate Forecast
               </a>
             </div>
           </div>
@@ -122,10 +163,18 @@ unset($item);
                 <div class="col-4 text-right">
                   <form method="GET" class="form-inline">
                     <div class="input-group input-group-sm">
-                      <select class="form-control bg-transparent text-light border-light" name="timeframe">
-                        <option value="7">Next 7 Days</option>
-                        <option value="14" selected>Next 14 Days</option>
-                        <option value="30">Next 30 Days</option>
+                      <select class="form-control bg-transparent text-light border-light" name="product_id">
+                        <option value="">All Products</option>
+                        <?php foreach ($products_list as $pp): ?>
+                          <option value="<?php echo htmlspecialchars($pp['prod_id']); ?>" <?php if($selected_product===$pp['prod_id']) echo 'selected'; ?>>
+                            <?php echo htmlspecialchars($pp['prod_name']); ?>
+                          </option>
+                        <?php endforeach; ?>
+                      </select>
+                      <select class="form-control bg-transparent text-light border-light ml-2" name="timeframe">
+                        <option value="7" <?php if($forecast_days==7) echo 'selected'; ?>>Next 7 Days</option>
+                        <option value="14" <?php if($forecast_days==14) echo 'selected'; ?>>Next 14 Days</option>
+                        <option value="30" <?php if($forecast_days==30) echo 'selected'; ?>>Next 30 Days</option>
                       </select>
                       <div class="input-group-append">
                         <button class="btn btn-primary" type="submit">
@@ -171,22 +220,75 @@ unset($item);
                           <thead class="thead-dark">
                             <tr>
                               <th scope="col" class="text-gold">Product</th>
+                              <th scope="col" class="text-gold">Type</th>
                               <th scope="col" class="text-gold">Days Left</th>
+                              <th scope="col" class="text-gold">Confidence</th>
                               <th scope="col" class="text-gold">Status</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <?php foreach ($forecast_data as $item): ?>
-                              <?php if ($item['status'] == 'critical' || $item['status'] == 'warning'): ?>
+                            <?php 
+                            $has_critical_items = false;
+                            if (!empty($forecast_data)): 
+                                foreach ($forecast_data as $item): 
+                                    $st = ($item['status'] ?? '');
+                                    if ($st === 'critical' || $st === 'high' || $st === 'medium'):
+                                        $has_critical_items = true;
+                            ?>
                                 <tr>
-                                  <th scope="row"><?php echo $item['product']; ?></th>
-                                  <td><?php echo $item['forecast_days']; ?></td>
-                                  <td class="<?php echo $item['status_class']; ?>">
-                                    <?php echo ucfirst($item['status']); ?>
-                                  </td>
+                                    <th scope="row"><?php echo htmlspecialchars($item['product'] ?? 'N/A'); ?></th>
+                                    <td>
+                                      <span class="badge badge-<?php 
+                                        echo $item['product_type'] == 'double' ? 'info' : 
+                                            ($item['product_type'] == 'combo' ? 'warning' : 'secondary'); 
+                                      ?>">
+                                        <?php echo ucfirst($item['product_type'] ?? 'regular'); ?>
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <div class="d-flex align-items-center">
+                                        <span class="mr-2"><?php echo number_format($item['forecast_days'] ?? 0, 1); ?></span>
+                                        <div class="progress w-100">
+                                          <div class="progress-bar <?php echo ($item['forecast_days'] ?? 0) < 7 ? 'bg-danger' : (($item['forecast_days'] ?? 0) < 14 ? 'bg-warning' : 'bg-success'); ?>" 
+                                               role="progressbar" style="width: <?php echo min(100, (int)(100 - min(100, ($item['forecast_days'] ?? 0) / 30 * 100))); ?>%"></div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <div class="d-flex align-items-center">
+                                        <span class="mr-2"><?php echo round(($item['confidence'] ?? 0) * 100); ?>%</span>
+                                        <div class="progress w-100" style="height: 6px;">
+                                          <div class="progress-bar <?php echo ($item['confidence'] ?? 0) > 0.7 ? 'bg-success' : (($item['confidence'] ?? 0) > 0.4 ? 'bg-warning' : 'bg-danger'); ?>" 
+                                               style="width: <?php echo round(($item['confidence'] ?? 0) * 100); ?>%"></div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td class="<?php echo htmlspecialchars($item['status_class'] ?? 'text-success'); ?>">
+                                        <span class="badge badge-<?php 
+                                            $urgency = $item['status'] ?? 'normal';
+                                            echo $urgency == 'critical' ? 'danger' : 
+                                                ($urgency == 'high' ? 'warning' : 
+                                                ($urgency == 'medium' ? 'info' : 
+                                                ($urgency == 'low' ? 'secondary' : 'success'))); 
+                                        ?>" 
+                                        title="<?php echo htmlspecialchars($item['urgency_details']['reason'] ?? ''); ?>">
+                                            <?php echo ucfirst($item['status'] ?? 'normal'); ?>
+                                        </span>
+                                    </td>
                                 </tr>
-                              <?php endif; ?>
-                            <?php endforeach; ?>
+                            <?php 
+                                    endif;
+                                endforeach; 
+                            endif;
+                            
+                            if (!$has_critical_items): ?>
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">
+                                        <i class="fas fa-check-circle mr-2"></i>
+                                        No critical items at this time
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
                           </tbody>
                         </table>
                       </div>
@@ -235,29 +337,124 @@ unset($item);
                           <thead class="thead-dark">
                             <tr>
                               <th scope="col" class="text-gold">Product</th>
+                              <th scope="col" class="text-gold">Type</th>
                               <th scope="col" class="text-gold">Current Stock</th>
-                              <th scope="col" class="text-gold">Daily Usage</th>
-                              <th scope="col" class="text-gold">Days Left</th>
-                              <th scope="col" class="text-gold">Forecast Date</th>
+                              <th scope="col" class="text-gold">Avg Daily Demand</th>
+                              <th scope="col" class="text-gold">Days Until Stockout</th>
+                              <th scope="col" class="text-gold">Recommended Order</th>
+                              <th scope="col" class="text-gold">Confidence</th>
                               <th scope="col" class="text-gold">Status</th>
                               <th scope="col" class="text-gold">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <?php foreach ($forecast_data as $item): ?>
+                            <?php if (!empty($forecast_data)): ?>
+                                <?php foreach ($forecast_data as $item): ?>
+                                    <tr>
+                                        <th scope="row"><?php echo htmlspecialchars($item['product'] ?? 'N/A'); ?></th>
+                                        <td>
+                                          <span class="badge badge-<?php 
+                                            echo $item['product_type'] == 'double' ? 'info' : 
+                                                ($item['product_type'] == 'combo' ? 'warning' : 'secondary'); 
+                                          ?>">
+                                            <?php echo ucfirst($item['product_type'] ?? 'regular'); ?>
+                                          </span>
+                                        </td>
+                                        <td><?php echo number_format($item['current_stock'] ?? 0, 0); ?></td>
+                                        <td><?php echo number_format($item['daily_usage'] ?? 0, 2); ?></td>
+                                        <td><?php echo number_format($item['forecast_days'] ?? 0, 1); ?></td>
+                                        <td><?php echo number_format($item['recommended_order'] ?? 0, 0); ?></td>
+                                        <td>
+                                          <div class="d-flex align-items-center">
+                                            <span class="mr-2"><?php echo round(($item['confidence'] ?? 0) * 100); ?>%</span>
+                                            <div class="progress w-100" style="height: 8px;">
+                                              <div class="progress-bar <?php echo ($item['confidence'] ?? 0) > 0.7 ? 'bg-success' : (($item['confidence'] ?? 0) > 0.4 ? 'bg-warning' : 'bg-danger'); ?>" 
+                                                   style="width: <?php echo round(($item['confidence'] ?? 0) * 100); ?>%"></div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                        <td class="<?php echo htmlspecialchars($item['status_class'] ?? 'text-success'); ?>">
+                                            <span class="badge badge-<?php 
+                                                $urgency = $item['status'] ?? 'normal';
+                                                echo $urgency == 'critical' ? 'danger' : 
+                                                    ($urgency == 'high' ? 'warning' : 
+                                                    ($urgency == 'medium' ? 'info' : 
+                                                    ($urgency == 'low' ? 'secondary' : 'success'))); 
+                                            ?>" 
+                                            title="<?php echo htmlspecialchars($item['urgency_details']['reason'] ?? ''); ?>">
+                                                <?php echo ucfirst($item['status'] ?? 'normal'); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="restock_product.php?restock=<?php echo urlencode($item['product_id'] ?? ''); ?>" class="btn btn-sm btn-primary">
+                                                <i class="fas fa-arrow-up"></i> Restock
+                                            </a>
+                                            <?php if (!empty($item['product_id'])): ?>
+                                            <a href="?product_id=<?php echo urlencode($item['product_id']); ?>&days=<?php echo (int)$forecast_days; ?>" class="btn btn-sm btn-info ml-1">
+                                                <i class="fas fa-chart-line"></i> Analyze
+                                            </a>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="9" class="text-center text-muted">
+                                        <i class="fas fa-exclamation-circle mr-2"></i>
+                                        No forecast data available. Please generate forecasts first.
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <?php if ($selected_product && !empty($detailed_forecast)): ?>
+              <!-- Selected Product: Historical and Forecast Detail -->
+              <div class="row mt-4">
+                <div class="col-md-6 mb-4">
+                  <div class="card shadow">
+                    <div class="card-header border-0">
+                      <h3 class="mb-0 text-gold">Historical Sales (90 days)</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="chart-container">
+                        <canvas id="historicalChart" height="300"></canvas>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                  <div class="card shadow">
+                    <div class="card-header border-0">
+                      <h3 class="mb-0 text-gold">Future Demand (next <?php echo (int)$forecast_days; ?> days)</h3>
+                    </div>
+                    <div class="card-body">
+                      <div class="table-responsive">
+                        <table class="table align-items-center table-flush">
+                          <thead class="thead-dark">
+                            <tr>
+                              <th class="text-gold">Date</th>
+                              <th class="text-gold">Predicted Demand</th>
+                              <th class="text-gold">Confidence</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <?php foreach ($detailed_forecast as $df): ?>
                               <tr>
-                                <th scope="row"><?php echo $item['product']; ?></th>
-                                <td><?php echo $item['current_stock']; ?></td>
-                                <td><?php echo $item['daily_usage']; ?></td>
-                                <td><?php echo $item['forecast_days']; ?></td>
-                                <td><?php echo $item['forecast_date']; ?></td>
-                                <td class="<?php echo $item['status_class']; ?>">
-                                  <?php echo ucfirst($item['status']); ?>
-                                </td>
+                                <td class="text-white"><?php echo htmlspecialchars($df['date']); ?></td>
+                                <td class="text-white"><?php echo htmlspecialchars($df['predicted_demand']); ?></td>
                                 <td>
-                                  <a href="restock_product.php?product=<?php echo urlencode($item['product']); ?>" class="btn btn-sm btn-primary">
-                                    <i class="fas fa-arrow-up"></i> Restock
-                                  </a>
+                                  <div class="d-flex align-items-center">
+                                    <span class="mr-2 text-white"><?php echo (int)round(($df['confidence'] ?? 0) * 100); ?>%</span>
+                                    <div class="progress w-100">
+                                      <div class="progress-bar" role="progressbar" style="width: <?php echo (int)round(($df['confidence'] ?? 0) * 100); ?>%"></div>
+                                    </div>
+                                  </div>
                                 </td>
                               </tr>
                             <?php endforeach; ?>
@@ -268,6 +465,7 @@ unset($item);
                   </div>
                 </div>
               </div>
+              <?php endif; ?>
             </div>
           </div>
         </div>
@@ -451,12 +649,7 @@ unset($item);
           labels: ['Critical Items', 'Warning Items', 'Normal Items'],
           datasets: [{
             data: [
-              <?php 
-                $critical = count(array_filter($forecast_data, function($item) { return $item['status'] == 'critical'; }));
-                $warning = count(array_filter($forecast_data, function($item) { return $item['status'] == 'warning'; }));
-                $normal = count(array_filter($forecast_data, function($item) { return $item['status'] == 'normal'; }));
-                echo "$critical, $warning, $normal";
-              ?>
+              <?php echo "$critical, $warning, $normal"; ?>
             ],
             backgroundColor: [
               'rgba(158, 43, 43, 0.7)',
@@ -515,6 +708,28 @@ unset($item);
           console.log('Filter by:', statusFilter);
         }
       };
+      
+      // Historical chart for selected product
+      <?php if ($selected_product && !empty($historical_data)): 
+        $hist_labels = array_column($historical_data, 'sale_date');
+        $hist_values = array_map('intval', array_column($historical_data, 'daily_quantity'));
+      ?>
+      const histCtx = document.getElementById('historicalChart').getContext('2d');
+      new Chart(histCtx, {
+        type: 'bar',
+        data: {
+          labels: <?php echo json_encode($hist_labels); ?>,
+          datasets: [{
+            label: 'Units Sold',
+            data: <?php echo json_encode($hist_values); ?>,
+            backgroundColor: 'rgba(192, 160, 98, 0.6)',
+            borderColor: 'rgba(192, 160, 98, 1)',
+            borderWidth: 1
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+      <?php endif; ?>
     });
 
     // Handle print button
@@ -523,4 +738,4 @@ unset($item);
     });
   </script>
 </body>
-</html>
+</html> 

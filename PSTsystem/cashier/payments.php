@@ -3,15 +3,16 @@ session_start();
 include('config/config.php');
 include('config/checklogin.php');
 check_login();
-if (isset($_GET['cancel'])) {
-    $id = $_GET['cancel'];
-    $adn = "DELETE FROM  rpos_orders  WHERE  order_id = ?";
+// Cancel entire pending order by order_code (mark as Cancelled)
+if (isset($_GET['cancel_code'])) {
+    $code = $_GET['cancel_code'];
+    $adn = "UPDATE rpos_orders SET order_status = 'Cancelled' WHERE order_code = ? AND order_status = 'Pending'";
     $stmt = $mysqli->prepare($adn);
-    $stmt->bind_param('s', $id);
-    $stmt->execute();
+    $stmt->bind_param('s', $code);
+    $ok = $stmt->execute();
     $stmt->close();
-    if ($stmt) {
-        $success = "Deleted" && header("refresh:1; url=payments.php");
+    if ($ok) {
+        $success = "Order cancelled" && header("refresh:1; url=payments.php");
     } else {
         $err = "Try Again Later";
     }
@@ -214,6 +215,11 @@ require_once('partials/_head.php');
         </div>
         <!-- Page content -->
         <div class="container-fluid mt--8">
+            <?php if (isset($_SESSION['order_success'])): ?>
+                <div class="alert alert-success" style="background: rgba(74, 107, 87, 0.2); border: 1px solid rgba(74, 107, 87, 0.4); color: #51cf66; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <i class="fas fa-check-circle"></i> <?php echo $_SESSION['order_success']; unset($_SESSION['order_success']); ?>
+                </div>
+            <?php endif; ?>
             <!-- Table -->
             <div class="row">
                 <div class="col">
@@ -237,38 +243,50 @@ require_once('partials/_head.php');
                                     <tr>
                                         <th scope="col">Code</th>
                                         <th scope="col">Customer</th>
-                                        <th scope="col">Product</th>
-                                        <th scope="col">Total Price</th>
+                                        <th scope="col">Items</th>
+                                        <th scope="col">Order Type</th>
+                                        <th scope="col">Total</th>
                                         <th scope="col">Date</th>
                                         <th scope="col">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php
-                                    $ret = "SELECT * FROM  rpos_orders WHERE order_status =''  ORDER BY `rpos_orders`.`created_at` DESC  ";
+                                    $ret = "SELECT order_code, customer_name, customer_id, MIN(order_type) AS order_type, MIN(created_at) AS created_at,
+                                                    GROUP_CONCAT(CONCAT(prod_name,' x',prod_qty) SEPARATOR ', ') AS items,
+                                                    SUM((prod_price * prod_qty) + COALESCE(additional_charge,0)) AS grand_total
+                                            FROM rpos_orders
+                                            WHERE order_status = 'Pending'
+                                            GROUP BY order_code, customer_name, customer_id
+                                            ORDER BY MIN(created_at) DESC";
                                     $stmt = $mysqli->prepare($ret);
                                     $stmt->execute();
                                     $res = $stmt->get_result();
-                                    while ($order = $res->fetch_object()) {
-                                        $total = ($order->prod_price * $order->prod_qty);
-
+                                    while ($grp = $res->fetch_object()) {
+                                        $order_type = $grp->order_type ?? 'dine-in';
                                     ?>
                                         <tr>
-                                            <th class="text-success" scope="row"><?php echo $order->order_code; ?></th>
-                                            <td><?php echo $order->customer_name; ?></td>
-                                            <td><?php echo $order->prod_name; ?></td>
-                                            <td>₱ <?php echo $total; ?></td>
-                                            <td><?php echo date('d/M/Y g:i', strtotime($order->created_at)); ?></td>
+                                            <th class="text-success" scope="row"><?php echo htmlspecialchars($grp->order_code); ?></th>
+                                            <td><?php echo htmlspecialchars($grp->customer_name); ?></td>
+                                            <td style="max-width: 380px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($grp->items); ?>"><?php echo htmlspecialchars($grp->items); ?></td>
+                                            <td>
+                                                <span class="badge <?php echo $order_type === 'takeout' ? 'badge-warning' : 'badge-info'; ?>" 
+                                                      style="background: <?php echo $order_type === 'takeout' ? 'var(--accent-gold)' : 'var(--accent-blue)'; ?>; color: var(--text-dark);">
+                                                    <i class="fas fa-<?php echo $order_type === 'takeout' ? 'shopping-bag' : 'utensils'; ?>"></i>
+                                                    <?php echo ucfirst($order_type); ?>
+                                                </span>
+                                            </td>
+                                            <td>₱ <?php echo number_format($grp->grand_total, 2); ?></td>
+                                            <td><?php echo date('d/M/Y g:i', strtotime($grp->created_at)); ?></td>
                                             <td>
                                                 <div class="d-flex">
-                                                    <a href="pay_order.php?order_code=<?php echo $order->order_code;?>&customer_id=<?php echo $order->customer_id;?>&order_status=Paid">
+                                                    <a href="pay_order.php?order_code=<?php echo urlencode($grp->order_code);?>&customer_id=<?php echo urlencode($grp->customer_id);?>&order_status=Paid&order_type=<?php echo urlencode($order_type); ?>">
                                                         <button class="btn btn-sm btn-success mr-2">
                                                             <i class="fas fa-handshake"></i>
                                                             Pay Order
                                                         </button>
                                                     </a>
-
-                                                    <a href="payments.php?cancel=<?php echo $order->order_id; ?>">
+                                                    <a href="payments.php?cancel_code=<?php echo urlencode($grp->order_code); ?>">
                                                         <button class="btn btn-sm btn-danger">
                                                             <i class="fas fa-window-close"></i>
                                                             Cancel Order
