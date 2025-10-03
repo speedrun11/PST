@@ -70,7 +70,7 @@ class SalesForecasting {
                     SUM(CAST(prod_price AS DECIMAL(10,2)) * CAST(prod_qty AS UNSIGNED)) as daily_revenue
                   FROM rpos_orders 
                   WHERE prod_id IN ($placeholders)
-                    AND order_status = 'Paid'
+                    AND order_status IN ('Paid','Preparing','Ready','Completed')
                     AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
                   GROUP BY DATE(created_at)
                   ORDER BY sale_date ASC";
@@ -199,6 +199,61 @@ class SalesForecasting {
         }
         
         return $forecast;
+    }
+
+    /**
+     * Public helpers to expose real external factors to the UI
+     */
+    public function getRealWeatherDataPublic() {
+        $data = [];
+        $sql = "SELECT weather_date, location, `condition`, temperature, humidity, impact_factor
+                FROM rpos_weather_data
+                ORDER BY weather_date DESC
+                LIMIT 20";
+        if ($res = $this->mysqli->query($sql)) {
+            while ($row = $res->fetch_assoc()) { $data[] = $row; }
+            $res->close();
+        }
+        return $data;
+    }
+
+    public function getRealHolidayDataPublic() {
+        $data = [];
+        $sql = "SELECT holiday_date, holiday_name, is_holiday, impact_factor
+                FROM rpos_holiday_data
+                ORDER BY holiday_date DESC
+                LIMIT 50";
+        if ($res = $this->mysqli->query($sql)) {
+            while ($row = $res->fetch_assoc()) { $data[] = $row; }
+            $res->close();
+        }
+        return $data;
+    }
+
+    public function getRealEconomicDataPublic() {
+        $data = [];
+        $sql = "SELECT data_date, inflation_rate, unemployment_rate, consumer_confidence, impact_factor
+                FROM rpos_economic_data
+                ORDER BY data_date DESC
+                LIMIT 24";
+        if ($res = $this->mysqli->query($sql)) {
+            while ($row = $res->fetch_assoc()) { $data[] = $row; }
+            $res->close();
+        }
+        return $data;
+    }
+
+    public function getRealLocalEventsDataPublic() {
+        $data = [];
+        $sql = "SELECT event_date, location, event_type, event_name, impact_factor
+                FROM rpos_local_events
+                ORDER BY event_date DESC
+                LIMIT 30";
+        if ($res = $this->mysqli->query($sql)) {
+            while ($row = $res->fetch_assoc()) { $data[] = $row; }
+            $res->close();
+        }
+        return $data;
     }
     
     /**
@@ -369,6 +424,64 @@ class SalesForecasting {
         }
         
         return $forecast;
+    }
+
+    /**
+     * Validate forecast accuracy over the last N days using a rolling 7-day moving average as forecast
+     * Returns: ['mae','mse','rmse','mape','bias','accuracy','overall_rating','data_points'] or null if insufficient data
+     */
+    public function validateForecastAccuracy($product_id, $days = 7) {
+        // Fetch at least days + 7 to build moving averages
+        $lookbackDays = max(14, (int)$days + 7);
+        $sales = $this->getHistoricalSales($product_id, $lookbackDays);
+        if (count($sales) < 8) {
+            return null;
+        }
+        $totalError = 0.0;
+        $totalSqError = 0.0;
+        $totalPctError = 0.0;
+        $totalBias = 0.0;
+        $count = 0;
+        // Use last $days data points for evaluation when available
+        $startIndex = max(7, count($sales) - (int)$days);
+        for ($i = $startIndex; $i < count($sales); $i++) {
+            // previous 7 days average as forecast for today
+            $window = array_slice($sales, $i - 7, 7);
+            $avg = 0.0;
+            foreach ($window as $w) { $avg += (float)$w['daily_quantity']; }
+            $avg = $avg / 7.0;
+            $actual = (float)$sales[$i]['daily_quantity'];
+            if ($actual <= 0) { continue; }
+            $err = abs($avg - $actual);
+            $totalError += $err;
+            $totalSqError += $err * $err;
+            $totalPctError += ($err / max(1e-9, $actual)) * 100.0;
+            $totalBias += ($avg - $actual);
+            $count++;
+        }
+        if ($count === 0) { return null; }
+        $mae = round($totalError / $count, 2);
+        $mse = round($totalSqError / $count, 2);
+        $rmse = round(sqrt($totalSqError / $count), 2);
+        $mape = round($totalPctError / $count, 2);
+        $bias = round($totalBias / $count, 2);
+        $accuracy = round(max(0, 100 - $mape), 2);
+        // Map accuracy to rating
+        $overall = 'very_poor';
+        if ($accuracy >= 90) $overall = 'excellent';
+        elseif ($accuracy >= 80) $overall = 'good';
+        elseif ($accuracy >= 70) $overall = 'fair';
+        elseif ($accuracy >= 60) $overall = 'poor';
+        return [
+            'mae' => $mae,
+            'mse' => $mse,
+            'rmse' => $rmse,
+            'mape' => $mape,
+            'bias' => $bias,
+            'accuracy' => $accuracy,
+            'overall_rating' => $overall,
+            'data_points' => $count,
+        ];
     }
     
     /**

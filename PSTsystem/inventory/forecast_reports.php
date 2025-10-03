@@ -420,6 +420,7 @@ if (!empty($forecast_data)) {
                   <div class="card shadow">
                     <div class="card-header border-0">
                       <h3 class="mb-0 text-gold">Historical Sales (90 days)</h3>
+                      <small class="text-muted">Includes statuses: Paid, Preparing, Ready, Completed</small>
                     </div>
                     <div class="card-body">
                       <div class="chart-container">
@@ -434,6 +435,20 @@ if (!empty($forecast_data)) {
                       <h3 class="mb-0 text-gold">Future Demand (next <?php echo (int)$forecast_days; ?> days)</h3>
                     </div>
                     <div class="card-body">
+                      <div class="chart-container mb-3">
+                        <canvas id="futureChart" height="300"></canvas>
+                      </div>
+                      <div class="mb-3 text-right">
+                        <?php 
+                          $total_pred = 0; $avg_conf = 0; $cnt = 0;
+                          if (!empty($detailed_forecast)) {
+                            foreach ($detailed_forecast as $dfx) { $total_pred += (float)($dfx['predicted_demand'] ?? 0); $avg_conf += (float)($dfx['confidence'] ?? 0); $cnt++; }
+                          }
+                          $avg_conf = $cnt ? round(($avg_conf / $cnt) * 100) : 0;
+                        ?>
+                        <span class="badge badge-info mr-2">Total Predicted: <?php echo number_format($total_pred, 0); ?></span>
+                        <span class="badge badge-success">Avg Confidence: <?php echo (int)$avg_conf; ?>%</span>
+                      </div>
                       <div class="table-responsive">
                         <table class="table align-items-center table-flush">
                           <thead class="thead-dark">
@@ -713,21 +728,126 @@ if (!empty($forecast_data)) {
       <?php if ($selected_product && !empty($historical_data)): 
         $hist_labels = array_column($historical_data, 'sale_date');
         $hist_values = array_map('intval', array_column($historical_data, 'daily_quantity'));
+        // Compute 7-day moving average server-side for stability
+        $hist_ma = [];
+        $window = 7;
+        for ($i = 0; $i < count($hist_values); $i++) {
+          $start = max(0, $i - $window + 1);
+          $slice = array_slice($hist_values, $start, $i - $start + 1);
+          $hist_ma[] = round(array_sum($slice) / max(1, count($slice)), 2);
+        }
       ?>
       const histCtx = document.getElementById('historicalChart').getContext('2d');
       new Chart(histCtx, {
         type: 'bar',
         data: {
           labels: <?php echo json_encode($hist_labels); ?>,
-          datasets: [{
-            label: 'Units Sold',
-            data: <?php echo json_encode($hist_values); ?>,
-            backgroundColor: 'rgba(192, 160, 98, 0.6)',
-            borderColor: 'rgba(192, 160, 98, 1)',
-            borderWidth: 1
-          }]
+          datasets: [
+            {
+              label: 'Units Sold',
+              data: <?php echo json_encode($hist_values); ?>,
+              backgroundColor: 'rgba(192, 160, 98, 0.6)',
+              borderColor: 'rgba(192, 160, 98, 1)',
+              borderWidth: 1,
+              yAxisID: 'y'
+            },
+            {
+              type: 'line',
+              label: '7-day Moving Avg',
+              data: <?php echo json_encode($hist_ma); ?>,
+              borderColor: 'rgba(58, 86, 115, 1)',
+              backgroundColor: 'rgba(58, 86, 115, 0.2)',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.2,
+              yAxisID: 'y'
+            }
+          ]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+          responsive: true, 
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.08)' },
+              ticks: { color: 'rgba(255,255,255,0.8)' }
+            },
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.8)' }
+            }
+          }
+        }
+      });
+      <?php endif; ?>
+
+      // Future demand chart for selected product
+      <?php if ($selected_product && !empty($detailed_forecast)): 
+        $f_labels = array_column($detailed_forecast, 'date');
+        $f_values = array_map(function($x){ return (float)($x['predicted_demand'] ?? 0); }, $detailed_forecast);
+        $f_conf = array_map(function($x){ return (float)($x['confidence'] ?? 0); }, $detailed_forecast);
+        // Build confidence band as ±10% of value scaled by confidence
+        $band_upper = [];
+        $band_lower = [];
+        for ($i=0; $i<count($f_values); $i++) {
+          $delta = ($f_values[$i] * 0.1) * max(0.2, $f_conf[$i]);
+          $band_upper[] = round($f_values[$i] + $delta, 2);
+          $band_lower[] = round(max(0, $f_values[$i] - $delta), 2);
+        }
+      ?>
+      const futureCtx = document.getElementById('futureChart').getContext('2d');
+      new Chart(futureCtx, {
+        type: 'line',
+        data: {
+          labels: <?php echo json_encode($f_labels); ?>,
+          datasets: [
+            {
+              label: 'Predicted Demand',
+              data: <?php echo json_encode($f_values); ?>,
+              borderColor: 'rgba(255, 99, 132, 1)',
+              backgroundColor: 'rgba(255, 99, 132, 0.15)',
+              fill: true,
+              tension: 0.2
+            },
+            {
+              label: 'Confidence Upper',
+              data: <?php echo json_encode($band_upper); ?>,
+              borderColor: 'rgba(58, 115, 86, 0.0)',
+              backgroundColor: 'rgba(58, 115, 86, 0.1)',
+              fill: '+1',
+              pointRadius: 0,
+              borderWidth: 0
+            },
+            {
+              label: 'Confidence Lower',
+              data: <?php echo json_encode($band_lower); ?>,
+              borderColor: 'rgba(58, 115, 86, 0.0)',
+              backgroundColor: 'rgba(58, 115, 86, 0.1)',
+              fill: '-1',
+              pointRadius: 0,
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: 'rgba(255,255,255,0.85)' } }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(255,255,255,0.08)' },
+              ticks: { color: 'rgba(255,255,255,0.8)' }
+            },
+            x: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(255,255,255,0.8)' }
+            }
+          }
+        }
       });
       <?php endif; ?>
     });

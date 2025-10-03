@@ -10,6 +10,29 @@ require_once('classes/ForecastValidation.php');
 try {
     $validation = new ForecastValidation($mysqli);
     
+    // Optional: Recalculate and persist validation using real sales/forecast data
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'revalidate') {
+        $products = [];
+        $ps = $mysqli->prepare("SELECT prod_id FROM rpos_products ORDER BY prod_name ASC");
+        if ($ps) {
+            $ps->execute();
+            $rs = $ps->get_result();
+            while ($row = $rs->fetch_assoc()) { $products[] = $row['prod_id']; }
+            $ps->close();
+        }
+        $saved = 0; $errors = 0;
+        foreach ($products as $pid) {
+            try {
+                $results = $validation->validateModel($pid); // uses real historical sales via SalesForecasting
+                if ($results) {
+                    $validation->storeValidationResults($pid, $results);
+                    $saved++;
+                }
+            } catch (Exception $ex) { $errors++; }
+        }
+        $_SESSION['success'] = "Validation updated: $saved models saved" . ($errors ? ", $errors errors" : "");
+    }
+    
     // Get performance dashboard data
     $performance_data = $validation->getPerformanceDashboard();
     
@@ -64,6 +87,12 @@ $avg_accuracy_30 = $total_products > 0 ? array_sum(array_column($performance_dat
               </nav>
             </div>
             <div class="col-lg-6 col-5 text-right">
+              <form method="POST" class="d-inline">
+                <input type="hidden" name="action" value="revalidate">
+                <button type="submit" class="btn btn-sm btn-info mr-2" title="Recalculate validation from real sales">
+                  <i class="fas fa-calculator"></i> Recalculate & Save
+                </button>
+              </form>
               <button class="btn btn-sm btn-primary" onclick="refreshPerformance()">
                 <i class="fas fa-sync-alt"></i> Refresh Data
               </button>
@@ -156,6 +185,7 @@ $avg_accuracy_30 = $total_products > 0 ? array_sum(array_column($performance_dat
           <div class="card shadow">
             <div class="card-header border-0">
               <h3 class="mb-0 text-gold">Model Performance Overview</h3>
+              <small class="text-muted">Based on real orders with statuses: Paid, Preparing, Ready, Completed</small>
             </div>
             <div class="card-body">
               <canvas id="performanceChart" height="100"></canvas>

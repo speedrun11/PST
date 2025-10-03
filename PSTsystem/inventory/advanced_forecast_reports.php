@@ -20,22 +20,93 @@ try {
     // Get detailed forecast for a specific product if requested
     $detailed_forecast = null;
     $selected_product = null;
+    $forecast_validation = null;
     if (isset($_GET['product_id'])) {
         $selected_product = $_GET['product_id'];
         $detailed_forecast = $forecasting->predictFutureDemand($selected_product, $forecast_days);
+        
+        // Get forecast validation data
+        $forecast_validation = $forecasting->validateForecastAccuracy($selected_product, 7);
     }
+  
+  // Helper functions to fetch real external factor impacts per date
+  function getWeatherImpactForDate($mysqli, $date) {
+    $q = "SELECT `condition`, impact_factor FROM rpos_weather_data WHERE weather_date = ? ORDER BY weather_date DESC LIMIT 1";
+    $st = $mysqli->prepare($q);
+    if (!$st) return [1.0, null];
+    $st->bind_param('s', $date);
+    $st->execute();
+    $res = $st->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    return [$row['impact_factor'] ?? 1.0, $row['condition'] ?? null];
+  }
+  function getHolidayImpactForDate($mysqli, $date) {
+    $q = "SELECT holiday_name, impact_factor FROM rpos_holiday_data WHERE holiday_date = ? LIMIT 1";
+    $st = $mysqli->prepare($q);
+    if (!$st) return [1.0, null];
+    $st->bind_param('s', $date);
+    $st->execute();
+    $res = $st->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    return [$row['impact_factor'] ?? 1.0, $row['holiday_name'] ?? null];
+  }
+  function getEconomicImpactForDate($mysqli, $date) {
+    // Use the most recent indicator up to the date
+    $q = "SELECT impact_factor, inflation_rate, unemployment_rate, consumer_confidence FROM rpos_economic_data WHERE data_date <= ? ORDER BY data_date DESC LIMIT 1";
+    $st = $mysqli->prepare($q);
+    if (!$st) return [1.0, null];
+    $st->bind_param('s', $date);
+    $st->execute();
+    $res = $st->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    if ($row) {
+      $meta = 'INF ' . ($row['inflation_rate'] ?? '-') . '%, UNEMP ' . ($row['unemployment_rate'] ?? '-') . '%, CONF ' . ($row['consumer_confidence'] ?? '-');
+    } else { $meta = null; }
+    return [$row['impact_factor'] ?? 1.0, $meta];
+  }
+  function getEventsImpactForDate($mysqli, $date) {
+    $q = "SELECT event_type, event_name, impact_factor FROM rpos_local_events WHERE event_date = ?";
+    $st = $mysqli->prepare($q);
+    if (!$st) return [1.0, []];
+    $st->bind_param('s', $date);
+    $st->execute();
+    $res = $st->get_result();
+    $events = [];
+    $factors = [];
+    while ($row = ($res ? $res->fetch_assoc() : null)) {
+      $events[] = trim(($row['event_type'] ?? '') . (isset($row['event_name']) && $row['event_name'] ? (': ' . $row['event_name']) : ''));
+      $factors[] = (float)($row['impact_factor'] ?? 1.0);
+    }
+    $factor = !empty($factors) ? array_sum($factors) / count($factors) : 1.0;
+    return [$factor, $events];
+  }
     
     // Get historical sales data for charts
     $historical_data = [];
     if ($selected_product) {
         $historical_data = $forecasting->getHistoricalSales($selected_product, 90);
     }
+    
+    // Get external factors data for display
+    $external_factors_data = [
+        'weather' => $forecasting->getRealWeatherDataPublic() ?? [],
+        'holidays' => $forecasting->getRealHolidayDataPublic() ?? [],
+        'economic' => $forecasting->getRealEconomicDataPublic() ?? [],
+        'events' => $forecasting->getRealLocalEventsDataPublic() ?? []
+    ];
 } catch (Exception $e) {
     $_SESSION['error'] = "Forecasting system error: " . $e->getMessage();
     $forecast_data = [];
     $detailed_forecast = null;
     $historical_data = [];
     $selected_product = null;
+    $forecast_validation = null;
+    $external_factors_data = [
+        'weather' => [],
+        'holidays' => [],
+        'economic' => [],
+        'events' => []
+    ];
 }
 ?>
 
@@ -65,6 +136,12 @@ try {
               </nav>
             </div>
             <div class="col-lg-6 col-5 text-right">
+              <a href="data_automation.php" class="btn btn-sm btn-warning mr-2">
+                <i class="fas fa-magic"></i> Data Automation
+              </a>
+              <button class="btn btn-sm btn-info mr-2" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh Data
+              </button>
               <button class="btn btn-sm btn-primary" onclick="window.print()">
                 <i class="fas fa-print"></i> Print Report
               </button>
@@ -109,6 +186,9 @@ try {
                 </div>
                 <div class="col-4 text-right">
                   <form method="GET" class="form-inline">
+                    <?php if ($selected_product): ?>
+                      <input type="hidden" name="product_id" value="<?php echo htmlspecialchars($selected_product); ?>">
+                    <?php endif; ?>
                     <div class="input-group input-group-sm">
                       <select class="form-control bg-transparent text-light border-light" name="days">
                         <option value="7" <?php echo $forecast_days == 7 ? 'selected' : ''; ?>>7 Days</option>
@@ -184,6 +264,11 @@ try {
 
               <!-- Advanced Forecast Table -->
               <div class="table-responsive">
+                <?php if (empty($forecast_data)): ?>
+                  <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle"></i> No forecast data available. Please check your product data and try again.
+                  </div>
+                <?php else: ?>
                 <table class="table align-items-center table-flush">
                   <thead class="thead-dark">
                     <tr>
@@ -247,6 +332,92 @@ try {
                     <?php endforeach; ?>
                   </tbody>
                 </table>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- External Factors Dashboard -->
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card shadow">
+            <div class="card-header border-0">
+              <h3 class="mb-0 text-gold">External Factors Analysis</h3>
+              <p class="text-muted">Real-time data affecting sales forecasts</p>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <!-- Weather Data -->
+                <div class="col-md-3">
+                  <div class="card bg-gradient-info text-white">
+                    <div class="card-body">
+                      <h6 class="card-title">Weather Impact</h6>
+                      <h4><?php echo count($external_factors_data['weather'] ?? []); ?></h4>
+                      <small>Recent Data Points</small>
+                      <?php if (!empty($external_factors_data['weather'])): ?>
+                        <div class="mt-2">
+                          <small>Latest: <?php echo $external_factors_data['weather'][0]['condition'] ?? 'N/A'; ?></small>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Holiday Data -->
+                <div class="col-md-3">
+                  <div class="card bg-gradient-warning text-white">
+                    <div class="card-body">
+                      <h6 class="card-title">Holiday Calendar</h6>
+                      <h4><?php echo count($external_factors_data['holidays'] ?? []); ?></h4>
+                      <small>Upcoming Holidays</small>
+                      <?php 
+                      $upcoming_holidays = array_filter($external_factors_data['holidays'] ?? [], function($holiday) {
+                          return strtotime($holiday['holiday_date']) >= time();
+                      });
+                      if (!empty($upcoming_holidays)): 
+                        $next_holiday = reset($upcoming_holidays);
+                      ?>
+                        <div class="mt-2">
+                          <small>Next: <?php echo $next_holiday['holiday_name'] ?? 'N/A'; ?></small>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Economic Data -->
+                <div class="col-md-3">
+                  <div class="card bg-gradient-success text-white">
+                    <div class="card-body">
+                      <h6 class="card-title">Economic Indicators</h6>
+                      <h4><?php echo count($external_factors_data['economic'] ?? []); ?></h4>
+                      <small>Data Points</small>
+                      <?php if (!empty($external_factors_data['economic'])): ?>
+                        <div class="mt-2">
+                          <small>Latest Impact: <?php echo ($external_factors_data['economic'][0]['impact_factor'] ?? 1.0) * 100; ?>%</small>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Local Events -->
+                <div class="col-md-3">
+                  <div class="card bg-gradient-primary text-white">
+                    <div class="card-body">
+                      <h6 class="card-title">Local Events</h6>
+                      <h4><?php echo count($external_factors_data['events'] ?? []); ?></h4>
+                      <small>Recent Events</small>
+                      <?php if (!empty($external_factors_data['events'])): ?>
+                        <div class="mt-2">
+                          <small>Latest: <?php echo $external_factors_data['events'][0]['event_type'] ?? 'N/A'; ?></small>
+                        </div>
+                      <?php endif; ?>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -267,7 +438,13 @@ try {
                   <!-- Historical Sales Chart -->
                   <div class="col-md-8">
                     <h5 class="text-gold">Historical Sales Trend (Last 90 Days)</h5>
-                    <canvas id="historicalChart" height="100"></canvas>
+                    <?php if (!empty($historical_data)): ?>
+                      <canvas id="historicalChart" height="100"></canvas>
+                    <?php else: ?>
+                      <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> No historical sales data available for this product.
+                      </div>
+                    <?php endif; ?>
                   </div>
                   
                   <!-- Forecast Summary -->
@@ -294,6 +471,28 @@ try {
                         <small>Forecast Accuracy</small>
                       </div>
                     </div>
+                    
+                    <!-- Forecast Validation -->
+                    <?php if ($forecast_validation && is_array($forecast_validation)): ?>
+                    <div class="card bg-gradient-warning text-white mt-2">
+                      <div class="card-body">
+                        <h6>Forecast Validation</h6>
+                        <div class="row text-center">
+                          <div class="col-6">
+                            <h4><?php echo $forecast_validation['mape'] ?? 'N/A'; ?>%</h4>
+                            <small>MAPE</small>
+                          </div>
+                          <div class="col-6">
+                            <h4><?php echo ucfirst($forecast_validation['overall_rating'] ?? 'Unknown'); ?></h4>
+                            <small>Rating</small>
+                          </div>
+                        </div>
+                        <div class="mt-2">
+                          <small>Based on <?php echo $forecast_validation['data_points'] ?? 0; ?> data points</small>
+                        </div>
+                      </div>
+                    </div>
+                    <?php endif; ?>
                   </div>
                 </div>
                 
@@ -302,6 +501,72 @@ try {
                   <div class="col-12">
                     <h5 class="text-gold">Future Demand Prediction (Next <?php echo $forecast_days; ?> Days)</h5>
                     <canvas id="forecastChart" height="100"></canvas>
+                  </div>
+                </div>
+                
+                <!-- External Factors Breakdown -->
+                <div class="row mt-4">
+                  <div class="col-12">
+                    <h5 class="text-gold">External Factors Impact Analysis</h5>
+                    <div class="table-responsive">
+                      <table class="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Weather</th>
+                            <th>Holiday</th>
+                            <th>Economic</th>
+                            <th>Events</th>
+                            <th>Combined Impact</th>
+                            <th>Predicted Demand</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <?php foreach (array_slice($detailed_forecast, 0, 14) as $forecast): 
+                            $dateKey = $forecast['date'];
+                            // Fetch real factors for the date
+                            list($weather_factor, $weather_label) = getWeatherImpactForDate($mysqli, $dateKey);
+                            list($holiday_factor, $holiday_label) = getHolidayImpactForDate($mysqli, $dateKey);
+                            list($economic_factor, $economic_meta) = getEconomicImpactForDate($mysqli, $dateKey);
+                            list($events_factor, $events_list) = getEventsImpactForDate($mysqli, $dateKey);
+                            $external_factor = round($weather_factor * $holiday_factor * $economic_factor * $events_factor, 3);
+                          ?>
+                            <tr>
+                              <td><?php echo date('M j', strtotime($forecast['date'])); ?></td>
+                              <td>
+                                <span class="badge badge-<?php echo $weather_factor > 1.0 ? 'success' : ($weather_factor < 1.0 ? 'danger' : 'secondary'); ?>" title="<?php echo htmlspecialchars($weather_label ?? 'N/A'); ?>">
+                                  <?php echo round(($weather_factor - 1) * 100, 1); ?>%
+                                </span>
+                              </td>
+                              <td>
+                                <span class="badge badge-<?php echo $holiday_factor > 1.0 ? 'warning' : 'secondary'; ?>" title="<?php echo htmlspecialchars($holiday_label ?? 'None'); ?>">
+                                  <?php echo round(($holiday_factor - 1) * 100, 1); ?>%
+                                </span>
+                              </td>
+                              <td>
+                                <span class="badge badge-<?php echo $economic_factor > 1.0 ? 'info' : 'secondary'; ?>" title="<?php echo htmlspecialchars($economic_meta ?? 'N/A'); ?>">
+                                  <?php echo round(($economic_factor - 1) * 100, 1); ?>%
+                                </span>
+                              </td>
+                              <td>
+                                <?php $events_title = !empty($events_list) ? implode("; ", array_slice($events_list, 0, 3)) : 'None'; ?>
+                                <span class="badge badge-<?php echo $events_factor > 1.0 ? 'primary' : 'secondary'; ?>" title="<?php echo htmlspecialchars($events_title); ?>">
+                                  <?php echo round(($events_factor - 1) * 100, 1); ?>%
+                                </span>
+                              </td>
+                              <td>
+                                <strong class="text-<?php echo $external_factor > 1.0 ? 'success' : ($external_factor < 1.0 ? 'danger' : 'muted'); ?>">
+                                  <?php echo round(($external_factor - 1) * 100, 1); ?>%
+                                </strong>
+                              </td>
+                              <td>
+                                <strong><?php echo $forecast['predicted_demand']; ?></strong>
+                              </td>
+                            </tr>
+                          <?php endforeach; ?>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -584,7 +849,7 @@ try {
       document.querySelector('.sidebar').classList.toggle('show');
     }
     
-    <?php if ($selected_product && $detailed_forecast): ?>
+    <?php if ($selected_product && $detailed_forecast && !empty($historical_data)): ?>
     // Historical Sales Chart
     const historicalCtx = document.getElementById('historicalChart').getContext('2d');
     const historicalData = <?php echo json_encode($historical_data); ?>;
@@ -682,3 +947,4 @@ try {
   </script>
 </body>
 </html>
+

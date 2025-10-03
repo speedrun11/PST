@@ -24,7 +24,7 @@ if (!isset($_SESSION['staff_id']) || strlen($_SESSION['staff_id']) == 0) {
 			--accent-green: #4a6b57;
 			--accent-blue: #3a5673;
 			--text-light: #f8f5f2;
-			--text-dark: #1a1a2e;0
+			--text-dark: #1a1a2e;
 			--transition-speed: 0.3s;
 		}
 		
@@ -614,9 +614,18 @@ if (!isset($_SESSION['staff_id']) || strlen($_SESSION['staff_id']) == 0) {
 		function getActionButtons(order) {
 			const buttons = [];
 			
-			if (order.status === 'Paid' || order.status === 'Pending') {
+			// Only allow starting preparation when order is Paid
+			if (order.status === 'Paid') {
 				buttons.push(`
 					<button class="action-btn btn-preparing" onclick="updateStatus('${order.order_code}', 'Preparing')">
+						<i class="fas fa-fire"></i>
+						Start Preparing
+					</button>
+				`);
+			} else if (order.status === 'Pending') {
+				// Show disabled button for Pending orders
+				buttons.push(`
+					<button class="action-btn btn-preparing" disabled title="Awaiting payment/confirmation">
 						<i class="fas fa-fire"></i>
 						Start Preparing
 					</button>

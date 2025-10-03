@@ -179,7 +179,7 @@ require_once('partials/_head.php');
             -webkit-appearance: none;
             margin: 0;
         }
-    </style>
+    </style> 
 </head>
 
 <body>

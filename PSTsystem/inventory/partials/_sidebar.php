@@ -122,6 +122,11 @@ while ($staff = $res->fetch_object()) {
             </a>
           </li>
           <li class="nav-item">
+            <a class="nav-link text-light" href="data_automation.php">
+              <i class="fas fa-magic text-gold"></i> Data Automation
+            </a>
+          </li>
+          <li class="nav-item">
             <a class="nav-link text-light" href="activity_logs.php">
               <i class="fas fa-history text-gold"></i> Activity Logs
             </a>
@@ -139,3 +144,4 @@ while ($staff = $res->fetch_object()) {
     </div>
   </nav>
 <?php } ?>
+

@@ -73,8 +73,9 @@ $stmt->close();
 $query = "SELECT p.prod_name, SUM(CAST(o.prod_qty AS UNSIGNED)) as total_qty, SUM(CAST(o.prod_price AS DECIMAL(10,2)) * CAST(o.prod_qty AS UNSIGNED)) as total_revenue
           FROM rpos_orders o 
           JOIN rpos_products p ON o.prod_id = p.prod_id 
-          WHERE o.order_status = 'Paid' AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          WHERE o.order_status IN ('Paid', 'Completed') AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
           GROUP BY o.prod_id, p.prod_name 
+          HAVING total_qty > 0
           ORDER BY total_qty DESC 
           LIMIT 5";
 $stmt = $mysqli->prepare($query);
@@ -96,7 +97,7 @@ if (!$stmt) {
 }
 
 //10. Sales Trend (Last 7 days)
-$query = "SELECT DATE(created_at) as sale_date, SUM(pay_amt) as daily_sales, COUNT(*) as daily_orders
+$query = "SELECT DATE(created_at) as sale_date, SUM(pay_amt) as daily_sales, COUNT(DISTINCT order_code) as daily_orders
           FROM rpos_payments 
           WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
           GROUP BY DATE(created_at)
@@ -123,10 +124,12 @@ if (!$stmt) {
 $query = "SELECT 
             CASE 
                 WHEN order_status = 'Paid' THEN 'Paid'
+                WHEN order_status = 'Completed' THEN 'Completed'
+                WHEN order_status = 'Cancelled' THEN 'Cancelled'
                 WHEN order_status = '' OR order_status IS NULL THEN 'Pending'
                 ELSE order_status
             END as status,
-            COUNT(*) as count
+            COUNT(DISTINCT order_code) as count
           FROM rpos_orders 
           GROUP BY status";
 $stmt = $mysqli->prepare($query);
